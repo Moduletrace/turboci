@@ -2,7 +2,7 @@
 
 A simple yet powerful cloud deployment CLI tool that scales.
 
-`current version: 1.0.0`
+`current version: 1.1.0`
 
 TurboCI is a configuration-driven infrastructure orchestrator for deploying and managing multi-cloud server stacks. It handles server provisioning, SSH key management, private networking, load balancing, file synchronization, dependency installation, and rolling zero-downtime deployments — all from a single YAML file.
 
@@ -327,10 +327,10 @@ The relay server runs a **web admin panel** that lets you manage your entire dep
 
 **Technical details:**
 
-| Component       | Port | NGINX path |
-| --------------- | ---- | ---------- |
-| Web UI (HTTP)   | 3772 | `/`        |
-| WebSocket       | 3773 | `/ws`      |
+| Component       | Port    | NGINX path     |
+| --------------- | ------- | -------------- |
+| Web UI (HTTP)   | 3772    | `/`            |
+| WebSocket       | 3773    | `/ws`          |
 | Terminal (ttyd) | dynamic | `/ttyd/<port>` |
 
 The admin panel process is managed by PM2 and starts automatically during relay initialization. Its database is encrypted at rest using a randomly generated 32-character password and 16-character salt, both unique per deployment.
@@ -538,8 +538,8 @@ relay_server_options:
     server_type: cpx21
 ```
 
-| Field         | Type   | Description                                                   |
-| ------------- | ------ | ------------------------------------------------------------- |
+| Field         | Type   | Description                                                        |
+| ------------- | ------ | ------------------------------------------------------------------ |
 | `server_type` | string | Machine type for the relay server. Defaults to provider base tier. |
 
 #### `services` object — _Required_
@@ -800,6 +800,7 @@ logs:
 ```
 
 Each entry is either:
+
 - A **string** — the shell command to run
 - An **object** with a `cmd` field — equivalent to the string form, useful when you need to add future per-entry options
 
@@ -1017,7 +1018,10 @@ const config: TCIConfig = {
                     server_type: "cpx21",
                     dir_mappings: [{ src: ".", dst: "/app" }],
                     run: {
-                        start: { work_dir: "/app", cmds: ['pm2 start "bun server.ts"'] },
+                        start: {
+                            work_dir: "/app",
+                            cmds: ['pm2 start "bun server.ts"'],
+                        },
                     },
                 },
             },
