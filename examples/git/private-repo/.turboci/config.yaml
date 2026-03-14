@@ -1,0 +1,80 @@
+# ------------------------------
+# Gitea Private Repo
+# ------------------------------
+- deployment_name: gitea_private_repo
+  provider: hetzner
+  location: ash
+  description: Gitea Private Repo Test Deployment
+  services:
+      web:
+          instances: 2
+          clusters: 1
+          git:
+              paradigm: gitea
+              repo_url: https://git.tben.me/Moduletrace/turboci-test-web.git
+              work_dir: /app
+              username: tben
+              keep_updated: true
+          dependencies:
+              turboci:
+                  - bun
+                  - node
+          run:
+              preflight:
+                  work_dir: /app
+                  cmds:
+                      - bun add -g pm2
+                      - pm2 kill
+                      - bun install
+              start:
+                  work_dir: /app
+                  cmds:
+                      - pm2 start "bun start"
+          logs:
+              - pm2 logs
+          healthcheck:
+              cmd: curl http://localhost:3000/healthcheck
+              test: Server Active
+      load_balancer:
+          type: load_balancer
+          target_services:
+              - service_name: web
+                port: 3000
+# ------------------------------
+# Github Private Repo
+# ------------------------------
+# - deployment_name: github_private_repo
+#   provider: hetzner
+#   location: ash
+#   description: Github Private Repo Test Deployment
+#   services:
+#       web:
+#           instances: 2
+#           clusters: 1
+#           git:
+#               paradigm: github
+#               repo_url: https://github.com/BenjaminToby/marksmen-homes.git
+#               work_dir: /app
+#           dependencies:
+#               turboci:
+#                   - bun
+#                   - node
+#           run:
+#               preflight:
+#                   work_dir: /app
+#                   cmds:
+#                       - bun add -g pm2
+#                       - pm2 kill
+#                       - bun install
+#                       - bunx next build
+#               start:
+#                   work_dir: /app
+#                   cmds:
+#                       - pm2 start "bun next start"
+#           logs:
+#               - pm2 logs
+#       load_balancer:
+#           type: load_balancer
+#           target_services:
+#               - service_name: web
+#                 port: 3000

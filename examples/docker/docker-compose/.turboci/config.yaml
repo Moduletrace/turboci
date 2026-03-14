@@ -1,0 +1,14 @@
+deployments:
+    - deployment_name: docker_compose_test
+      provider: hetzner
+      location: ash
+      description: Docker Compose Test Deployment
+      services:
+          web:
+              instances: 2
+              clusters: 1
+              server_type: cpx11
+              docker_compose_file: ./app/docker-compose.yaml
+              docker_compose_dir: ./app
+              compose:
+                  services:

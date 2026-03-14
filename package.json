@@ -1,0 +1,36 @@
+{
+    "name": "@moduletrace/turboci",
+    "version": "1.1.0",
+    "description": "A simple and fast cloud deployment CLI tool",
+    "main": "dist/index.js",
+    "bin": {
+        "turboci": "dist/turboci.js"
+    },
+    "scripts": {
+        "dev": "tsc --watch",
+        "compile": "bun build ./bin.ts --compile --outfile bin/turboci",
+        "build": "bun build ./bin.ts --target=node --outfile=dist/turboci.js --minify",
+        "build:all": "bun run compile && bun run build",
+        "upload:r2": "bun build:all && bun secrets/write-binaries.ts"
+    },
+    "devDependencies": {
+        "@types/bun": "latest",
+        "@types/inquirer": "^9.0.9",
+        "@types/js-yaml": "^4.0.9",
+        "@types/lodash": "^4.17.20",
+        "@types/node": "^24.1.0"
+    },
+    "peerDependencies": {
+        "typescript": "^5"
+    },
+    "dependencies": {
+        "@aws-sdk/client-ec2": "^3.908.0",
+        "chalk": "^5.6.2",
+        "commander": "^14.0.0",
+        "googleapis": "^164.0.0",
+        "inquirer": "^12.9.4",
+        "js-yaml": "^4.1.0",
+        "lodash": "^4.17.21",
+        "ora": "^8.2.0"
+    }
+}
