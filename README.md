@@ -64,31 +64,19 @@ Every deployment includes a **relay server** that runs two persistent admin proc
 
 ## Installation
 
-TurboCI provides two executable formats:
+Download the latest binary from the [GitHub Releases page](https://github.com/Moduletrace/turboci/releases/latest).
 
-### 1. Standalone Binary (~100 MB)
-
-A self-contained binary that requires no dependencies (Node.js or Bun not required):
+The standalone binary has no runtime dependencies — Node.js or Bun are not required.
 
 ```bash
+# Download the latest binary
+curl -L https://github.com/Moduletrace/turboci/releases/latest/download/turboci -o turboci
+
+# Make it executable and move to PATH
 chmod +x ./turboci
-./turboci
-```
-
-### 2. JavaScript File (~1 MB)
-
-A minified JS file that requires Node.js:
-
-```bash
-node ./turboci.js
-```
-
-### Adding to PATH
-
-To use `turboci` from anywhere on your system, move the binary to a directory in your `PATH`:
-
-```bash
 sudo mv ./turboci /usr/local/bin/turboci
+
+# Verify
 turboci --version
 ```
 
