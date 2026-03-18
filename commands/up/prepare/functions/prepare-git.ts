@@ -125,7 +125,7 @@ export default async function (
         //     process.exit(1);
         // }
 
-        global.ORA_SPINNER.succeed(`Directories Synced Successfully!`);
+        global.ORA_SPINNER.succeed(`Git Setup Complete!`);
 
         return {
             success: true,

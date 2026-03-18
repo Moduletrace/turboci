@@ -372,8 +372,20 @@ export type TCIConfigLBLocation = {
      * Supports all NGINX matching prefixes: `"/"`, `"/api/"`, `"= /ping"`,
      * `"~* \\.(jpg|png)$"`, etc.
      */
-    path: string;
-    /** Rate limiting applied to this location. */
+    match: string;
+    /**
+     * Path to target on the upstream. If left empty, the default path
+     * will be used.
+     */
+    target_path?: string;
+    /**
+     * Port on the target upstream to target. Default port is the one
+     * set on the parent `target_services` onject.
+     */
+    target_port?: number;
+    /**
+     * Rate limiting applied to this location.
+     */
     rate_limit?: TCIConfigLBRateLimit;
     /**
      * Arbitrary NGINX directives added verbatim inside this location block.
@@ -390,11 +402,11 @@ export type TCIConfigLBLocation = {
      */
     directives?: { [directive: string]: string | string[] };
     /**
-     * If `false`, the upstream `proxy_pass` block is omitted for this location.
+     * If `true`, the upstream `proxy_pass` block is omitted for this location.
      * Use when serving static files, issuing redirects, or returning custom
-     * responses. Defaults to `true`.
+     * responses. Defaults to `false`.
      */
-    proxy?: boolean;
+    no_proxy?: boolean;
 };
 
 /**

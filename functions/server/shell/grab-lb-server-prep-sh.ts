@@ -74,8 +74,6 @@ export default async function grabLoadBalancerServerPrepSH({
         load_balancer_service,
     });
 
-    console.log("nginxCnf", nginxCnf);
-
     if (nginxCnf) {
         finalCmd += `\ncat << 'EOF' > /etc/nginx/nginx.conf\n`;
         finalCmd += `${nginxCnf}\n`;

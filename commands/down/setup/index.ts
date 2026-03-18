@@ -96,4 +96,8 @@ export default async function (params?: DownSetupParams) {
             process.exit(1);
         }
     }
+
+    global.ORA_SPINNER.succeed(
+        `Service${params?.service_name ? ` ${params.service_name} ` : "s "}cleanup successful!`,
+    );
 }

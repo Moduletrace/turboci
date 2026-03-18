@@ -1,13 +1,11 @@
 # yaml-language-server: $schema=../../../../schema/turboci.schema.json
 
 deployments:
-    - deployment_name: cloudflare_only_lb
+    - deployment_name: base_lb
       provider: hetzner
       location: ash
       description: >
-          Load balancer that only accepts traffic from Cloudflare IPs.
-          All other IPs are dropped (deny all). A single extra IP is
-          included for internal/ops access.
+          Base Load Balancer config
       services:
           api:
               instances: 1
@@ -31,21 +29,21 @@ deployments:
                   start:
                       work_dir: /app
                       cmds:
-                          - pm2 start "bun server/server.ts"
-              healthcheck:
-                  cmd: curl http://localhost:3000/healthcheck
-                  test: Welcome to Bun JS
-              logs:
-                  - pm2 logs
+                          - pm2 start "bun server/serve.ts"
           lb:
               type: load_balancer
-              # Allow only Cloudflare IP addresses
-              allow_ips:
-                  - cloudflare
               target_services:
                   - service_name: api
                     port: 3000
-                    domains:
-                        - turboci-cloudflare-test.tben.me
-              ssl:
-                  email: ben@tben.me
+                    locations:
+                        - match: "/ws"
+                          target_port: 5000
+                        - match: "/api"
+                          target_path: "/api"
+                          rate_limit:
+                              rate: "10r/s"
+                        - match: "/public/"
+                          no_proxy: true
+                          directives:
+                              alias: "/static/"
+                              try files: "$uri $uri/ =404"

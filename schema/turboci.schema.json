@@ -515,14 +515,14 @@
                                                             "title": "directives",
                                                             "type": "object"
                                                         },
-                                                        "path": {
+                                                        "match": {
                                                             "description": "NGINX location path or pattern.\nSupports all NGINX matching prefixes: `\"/\"`, `\"/api/\"`, `\"= /ping\"`,\n`\"~* \\\\.(jpg|png)$\"`, etc.",
-                                                            "title": "path",
+                                                            "title": "match",
                                                             "type": "string"
                                                         },
-                                                        "proxy": {
-                                                            "description": "If `false`, the upstream `proxy_pass` block is omitted for this location.\nUse when serving static files, issuing redirects, or returning custom\nresponses. Defaults to `true`.",
-                                                            "title": "proxy",
+                                                        "no_proxy": {
+                                                            "description": "If `true`, the upstream `proxy_pass` block is omitted for this location.\nUse when serving static files, issuing redirects, or returning custom\nresponses. Defaults to `false`.",
+                                                            "title": "no_proxy",
                                                             "type": "boolean"
                                                         },
                                                         "rate_limit": {
@@ -554,10 +554,20 @@
                                                             ],
                                                             "title": "rate_limit",
                                                             "type": "object"
+                                                        },
+                                                        "target_path": {
+                                                            "description": "Path to target on the upstream. If left empty, the default path\nwill be used.",
+                                                            "title": "target_path",
+                                                            "type": "string"
+                                                        },
+                                                        "target_port": {
+                                                            "description": "Port on the target upstream to target. Default port is the one\nset on the parent `target_services` onject.",
+                                                            "title": "target_port",
+                                                            "type": "number"
                                                         }
                                                     },
                                                     "required": [
-                                                        "path"
+                                                        "match"
                                                     ],
                                                     "type": "object"
                                                 },
@@ -573,6 +583,84 @@
                                                 "description": "Name of the service in the same deployment to proxy traffic to.",
                                                 "title": "service_name",
                                                 "type": "string"
+                                            },
+                                            "target_location": {
+                                                "description": "Custom NGINX `location` block added to the base(\"/\") location",
+                                                "properties": {
+                                                    "directives": {
+                                                        "additionalProperties": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "items": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "type": "array"
+                                                                },
+                                                                {
+                                                                    "type": "string"
+                                                                }
+                                                            ]
+                                                        },
+                                                        "description": "Arbitrary NGINX directives added verbatim inside this location block.\nString values emit a single directive; array values emit one line per entry.\n\nExample:\n```yaml\ndirectives:\n  root: /var/www/html\n  add_header:\n    - \"Cache-Control 'public'\"\n    - \"X-Frame-Options DENY\"\n```",
+                                                        "title": "directives",
+                                                        "type": "object"
+                                                    },
+                                                    "match": {
+                                                        "description": "NGINX location path or pattern.\nSupports all NGINX matching prefixes: `\"/\"`, `\"/api/\"`, `\"= /ping\"`,\n`\"~* \\\\.(jpg|png)$\"`, etc.",
+                                                        "title": "match",
+                                                        "type": "string"
+                                                    },
+                                                    "no_proxy": {
+                                                        "description": "If `true`, the upstream `proxy_pass` block is omitted for this location.\nUse when serving static files, issuing redirects, or returning custom\nresponses. Defaults to `false`.",
+                                                        "title": "no_proxy",
+                                                        "type": "boolean"
+                                                    },
+                                                    "rate_limit": {
+                                                        "description": "Rate limiting applied to this location.",
+                                                        "properties": {
+                                                            "burst": {
+                                                                "description": "Burst queue size — requests exceeding the rate are queued up to this limit.",
+                                                                "title": "burst",
+                                                                "type": "number"
+                                                            },
+                                                            "key": {
+                                                                "description": "NGINX rate limit key. Defaults to `\"$binary_remote_addr\"` (per client IP).\nCan be any NGINX variable, e.g. `\"$http_x_forwarded_for\"`.",
+                                                                "title": "key",
+                                                                "type": "string"
+                                                            },
+                                                            "nodelay": {
+                                                                "description": "If `true`, burst requests are served immediately rather than delayed.",
+                                                                "title": "nodelay",
+                                                                "type": "boolean"
+                                                            },
+                                                            "rate": {
+                                                                "description": "Request rate, e.g. `\"10r/s\"` or `\"100r/m\"`.",
+                                                                "title": "rate",
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "rate"
+                                                        ],
+                                                        "title": "rate_limit",
+                                                        "type": "object"
+                                                    },
+                                                    "target_path": {
+                                                        "description": "Path to target on the upstream. If left empty, the default path\nwill be used.",
+                                                        "title": "target_path",
+                                                        "type": "string"
+                                                    },
+                                                    "target_port": {
+                                                        "description": "Port on the target upstream to target. Default port is the one\nset on the parent `target_services` onject.",
+                                                        "title": "target_port",
+                                                        "type": "number"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "match"
+                                                ],
+                                                "title": "target_location",
+                                                "type": "object"
                                             },
                                             "weight": {
                                                 "description": "NGINX upstream weight for weighted round-robin load distribution.",
@@ -1132,14 +1220,14 @@
                                                                     "title": "directives",
                                                                     "type": "object"
                                                                 },
-                                                                "path": {
+                                                                "match": {
                                                                     "description": "NGINX location path or pattern.\nSupports all NGINX matching prefixes: `\"/\"`, `\"/api/\"`, `\"= /ping\"`,\n`\"~* \\\\.(jpg|png)$\"`, etc.",
-                                                                    "title": "path",
+                                                                    "title": "match",
                                                                     "type": "string"
                                                                 },
-                                                                "proxy": {
-                                                                    "description": "If `false`, the upstream `proxy_pass` block is omitted for this location.\nUse when serving static files, issuing redirects, or returning custom\nresponses. Defaults to `true`.",
-                                                                    "title": "proxy",
+                                                                "no_proxy": {
+                                                                    "description": "If `true`, the upstream `proxy_pass` block is omitted for this location.\nUse when serving static files, issuing redirects, or returning custom\nresponses. Defaults to `false`.",
+                                                                    "title": "no_proxy",
                                                                     "type": "boolean"
                                                                 },
                                                                 "rate_limit": {
@@ -1171,10 +1259,20 @@
                                                                     ],
                                                                     "title": "rate_limit",
                                                                     "type": "object"
+                                                                },
+                                                                "target_path": {
+                                                                    "description": "Path to target on the upstream. If left empty, the default path\nwill be used.",
+                                                                    "title": "target_path",
+                                                                    "type": "string"
+                                                                },
+                                                                "target_port": {
+                                                                    "description": "Port on the target upstream to target. Default port is the one\nset on the parent `target_services` onject.",
+                                                                    "title": "target_port",
+                                                                    "type": "number"
                                                                 }
                                                             },
                                                             "required": [
-                                                                "path"
+                                                                "match"
                                                             ],
                                                             "type": "object"
                                                         },
@@ -1190,6 +1288,84 @@
                                                         "description": "Name of the service in the same deployment to proxy traffic to.",
                                                         "title": "service_name",
                                                         "type": "string"
+                                                    },
+                                                    "target_location": {
+                                                        "description": "Custom NGINX `location` block added to the base(\"/\") location",
+                                                        "properties": {
+                                                            "directives": {
+                                                                "additionalProperties": {
+                                                                    "anyOf": [
+                                                                        {
+                                                                            "items": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "type": "array"
+                                                                        },
+                                                                        {
+                                                                            "type": "string"
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                "description": "Arbitrary NGINX directives added verbatim inside this location block.\nString values emit a single directive; array values emit one line per entry.\n\nExample:\n```yaml\ndirectives:\n  root: /var/www/html\n  add_header:\n    - \"Cache-Control 'public'\"\n    - \"X-Frame-Options DENY\"\n```",
+                                                                "title": "directives",
+                                                                "type": "object"
+                                                            },
+                                                            "match": {
+                                                                "description": "NGINX location path or pattern.\nSupports all NGINX matching prefixes: `\"/\"`, `\"/api/\"`, `\"= /ping\"`,\n`\"~* \\\\.(jpg|png)$\"`, etc.",
+                                                                "title": "match",
+                                                                "type": "string"
+                                                            },
+                                                            "no_proxy": {
+                                                                "description": "If `true`, the upstream `proxy_pass` block is omitted for this location.\nUse when serving static files, issuing redirects, or returning custom\nresponses. Defaults to `false`.",
+                                                                "title": "no_proxy",
+                                                                "type": "boolean"
+                                                            },
+                                                            "rate_limit": {
+                                                                "description": "Rate limiting applied to this location.",
+                                                                "properties": {
+                                                                    "burst": {
+                                                                        "description": "Burst queue size — requests exceeding the rate are queued up to this limit.",
+                                                                        "title": "burst",
+                                                                        "type": "number"
+                                                                    },
+                                                                    "key": {
+                                                                        "description": "NGINX rate limit key. Defaults to `\"$binary_remote_addr\"` (per client IP).\nCan be any NGINX variable, e.g. `\"$http_x_forwarded_for\"`.",
+                                                                        "title": "key",
+                                                                        "type": "string"
+                                                                    },
+                                                                    "nodelay": {
+                                                                        "description": "If `true`, burst requests are served immediately rather than delayed.",
+                                                                        "title": "nodelay",
+                                                                        "type": "boolean"
+                                                                    },
+                                                                    "rate": {
+                                                                        "description": "Request rate, e.g. `\"10r/s\"` or `\"100r/m\"`.",
+                                                                        "title": "rate",
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "rate"
+                                                                ],
+                                                                "title": "rate_limit",
+                                                                "type": "object"
+                                                            },
+                                                            "target_path": {
+                                                                "description": "Path to target on the upstream. If left empty, the default path\nwill be used.",
+                                                                "title": "target_path",
+                                                                "type": "string"
+                                                            },
+                                                            "target_port": {
+                                                                "description": "Port on the target upstream to target. Default port is the one\nset on the parent `target_services` onject.",
+                                                                "title": "target_port",
+                                                                "type": "number"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "match"
+                                                        ],
+                                                        "title": "target_location",
+                                                        "type": "object"
                                                     },
                                                     "weight": {
                                                         "description": "NGINX upstream weight for weighted round-robin load distribution.",

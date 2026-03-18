@@ -13,40 +13,47 @@ deployments:
           api:
               instances: 1
               clusters: 1
-              server_type: cpx21
+              server_type: cpx11
               dependencies:
                   turboci:
                       - bun
+                      - node
               dir_mappings:
-                  - src: ./server
-                    dst: /app/server
+                  - dst: /app/server
+                    src: ./server
               run:
                   preflight:
-                      file: /app/server/setup.sh
+                      cmds:
+                          - bun add -g pm2
+                          - pm2 kill
+                          - cd /app
+                          - chmod +x ./server/setup.sh && ./server/setup.sh
+                          - ls -laF
                   start:
                       work_dir: /app
                       cmds:
-                          - bun run start
+                          - pm2 start "bun server/server.ts"
+              healthcheck:
+                  cmd: curl http://localhost:3000/healthcheck
+                  test: Welcome to Bun JS
+              logs:
+                  - pm2 logs
           lb:
               type: load_balancer
-              ssl:
-                  email: ops@example.com
               target_services:
                   - service_name: api
                     port: 3000
-                    domains:
-                        - app.example.com
                     locations:
                         # Rate-limit login/auth to prevent brute force
-                        - path: /api/auth/
+                        - match: /api/auth/
                           rate_limit:
                               rate: "5r/s"
                               burst: 10
                               nodelay: true
 
                         # Serve static assets directly from disk, skip upstream
-                        - path: /static/
-                          proxy: false
+                        - match: /static/
+                          no_proxy: true
                           directives:
                               root: /var/www/html
                               expires: "30d"

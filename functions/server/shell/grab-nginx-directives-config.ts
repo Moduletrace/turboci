@@ -1,10 +1,14 @@
 import type { TCIConfigLBLocation } from "@/types";
-import { _n } from "@/utils/numberfy";
-import _ from "lodash";
 
 type Params = {
     location?: TCIConfigLBLocation;
 };
+
+const VALID_DIRECTIVE_KEY = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+function isSafeDirectiveValue(v: string): boolean {
+    return !v.includes("\n") && !v.includes("\r");
+}
 
 export default function grabNginxDirectivesConfig({
     location,
@@ -13,11 +17,14 @@ export default function grabNginxDirectivesConfig({
 
     if (location?.directives) {
         for (const [key, value] of Object.entries(location.directives)) {
+            if (!VALID_DIRECTIVE_KEY.test(key)) continue;
             if (Array.isArray(value)) {
                 for (const v of value) {
+                    if (!isSafeDirectiveValue(v)) continue;
                     loc += `            ${key} ${v};\n`;
                 }
             } else {
+                if (!isSafeDirectiveValue(value)) continue;
                 loc += `            ${key} ${value};\n`;
             }
         }

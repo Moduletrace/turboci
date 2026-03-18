@@ -1,18 +1,17 @@
-import type { ParsedDeploymentServiceConfig } from "@/types";
-import { _n } from "@/utils/numberfy";
 import AppData from "@/data/app-data";
-import _ from "lodash";
 
 type Params = {
     upstream_name: string;
+    path?: string;
 };
 
 export default function grabDefaultProxyLocation({
     upstream_name,
+    path,
 }: Params): string {
     let loc = "";
 
-    loc += `            proxy_pass http://${upstream_name};\n`;
+    loc += `            proxy_pass http://${upstream_name}${path || ""};\n`;
     loc += `            proxy_set_header Host \\$host;\n`;
     loc += `            proxy_set_header X-Real-IP \\$remote_addr;\n`;
     loc += `            proxy_set_header X-Forwarded-For \\$proxy_add_x_forwarded_for;\n`;
