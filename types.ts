@@ -315,11 +315,11 @@ export type ServiceScriptObject = {
     work_dir?: string;
 };
 
-export type ParsedDeploymentServiceConfig = TCIConfigServiceConfig & {
+export interface ParsedDeploymentServiceConfig extends TCIConfigServiceConfig {
     service_name: string;
     parent_service_name?: string;
     servers?: NormalizedServerObject[];
-};
+}
 
 export type DefaultDeploymentParams = {
     service: ParsedDeploymentServiceConfig;
@@ -331,10 +331,10 @@ export type CommanderDefaultOptions = {
     target?: string[];
 };
 
-export type TurbociControlServer = NormalizedServerObject & {
+export interface TurbociControlServer extends NormalizedServerObject {
     service_name?: "__relay" | (string & {});
     deployment_name?: string;
-};
+}
 
 export type TurbociControlReturn = {
     servers?: TurbociControlServer[];
