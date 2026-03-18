@@ -160,6 +160,18 @@ export type TCIConfigServiceConfig = {
     env?: { [k: string]: string };
     env_file?: string;
     target_services?: TCIConfigServiceConfigLBTarget[];
+    /**
+     * Restrict inbound requests to these IPs/CIDRs only. All other IPs are
+     * denied. Applies to all server blocks on this load balancer.
+     *
+     * Accepts raw IPs/CIDRs or named providers which are automatically
+     * expanded to their published ranges. Supported providers: "cloudflare".
+     *
+     * Example: ["cloudflare", "5.78.1.245"]
+     *
+     * Only applies to load_balancer services.
+     */
+    allow_ips?: string[];
     run?: TCIConfigServiceConfigRun;
     ssl?: TCIConfigServiceSSL;
     duplicate_service_name?: string;
@@ -228,12 +240,42 @@ export type TCIConfigServiceSSL = {
     email: string;
 };
 
+export type TCIConfigLBRateLimit = {
+    /** Request rate, e.g. "10r/s", "100r/m" */
+    rate: string;
+    /** Burst queue size */
+    burst?: number;
+    /** If true, excess requests are served without delay (nginx nodelay) */
+    nodelay?: boolean;
+    /** Rate limit key. Defaults to "$binary_remote_addr" */
+    key?: string;
+};
+
+export type TCIConfigLBLocation = {
+    /** Location path pattern, e.g. "/", "/api/", "~* \\.(jpg|png)$" */
+    path: string;
+    /** Rate limiting for this location */
+    rate_limit?: TCIConfigLBRateLimit;
+    /**
+     * Additional nginx directives as key-value pairs.
+     * Array values emit one directive line per entry.
+     */
+    directives?: { [directive: string]: string | string[] };
+    /**
+     * If false, disables proxy_pass to the upstream for this location.
+     * Defaults to true.
+     */
+    proxy?: boolean;
+};
+
 export type TCIConfigServiceConfigLBTarget = {
     service_name: string;
     port: number;
     weight?: number;
     backup?: boolean;
     domains?: (string | TCIConfigServiceDomain)[];
+    /** Custom NGINX location blocks rendered inside this target's server block */
+    locations?: TCIConfigLBLocation[];
 };
 
 export type TCIConfigServiceConfigRun = {

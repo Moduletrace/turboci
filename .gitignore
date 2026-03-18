@@ -30,7 +30,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
  
 /test
 # .turboci
-/examples/**/*.sh
 /examples/**/active.yaml
 .backup
 .ssh

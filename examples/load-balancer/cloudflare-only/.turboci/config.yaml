@@ -1,0 +1,31 @@
+deployments:
+    - deployment_name: cloudflare_only_lb
+      provider: hetzner
+      location: ash
+      description: >
+          Load balancer that only accepts traffic from Cloudflare IPs.
+          All other IPs are dropped (deny all). A single extra IP is
+          included for internal/ops access.
+      services:
+          api:
+              instances: 2
+              clusters: 1
+              server_type: cpx11
+              dependencies:
+                  turboci:
+                      - bun
+              run:
+                  start:
+                      work_dir: /app
+                      cmds:
+                          - bun run start
+          lb:
+              type: load_balancer
+              # "cloudflare" expands automatically to all published Cloudflare
+              # IPv4 and IPv6 ranges. Raw IPs/CIDRs can be mixed in freely.
+              allow_ips:
+                  - cloudflare
+                  - 5.78.1.245
+              target_services:
+                  - service_name: api
+                    port: 3000
