@@ -422,6 +422,10 @@ export type TCIConfigServiceConfigLBTarget = {
      * is explicitly defined here.
      */
     locations?: TCIConfigLBLocation[];
+    /**
+     * Custom NGINX `location` block added to the base("/") location
+     */
+    target_location?: TCIConfigLBLocation;
 };
 
 /**

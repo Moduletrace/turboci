@@ -24,11 +24,11 @@ export default async function grabLoadBalancerServerPrepSH({
     const currentConfigs = grabActiveConfig();
 
     const target_deployment = configs?.find(
-        (c) => c.deployment_name == deployment.deployment_name
+        (c) => c.deployment_name == deployment.deployment_name,
     );
 
     const target_active_deployment = currentConfigs?.find(
-        (c) => c.deployment_name == deployment.deployment_name
+        (c) => c.deployment_name == deployment.deployment_name,
     );
 
     if (!target_deployment) {
@@ -37,7 +37,7 @@ export default async function grabLoadBalancerServerPrepSH({
     }
 
     const current_active_service = target_active_deployment?.services.find(
-        (s) => s.service_name == load_balancer_service.service_name
+        (s) => s.service_name == load_balancer_service.service_name,
     );
 
     let finalCmd = "";
@@ -73,6 +73,8 @@ export default async function grabLoadBalancerServerPrepSH({
         target_deployment,
         load_balancer_service,
     });
+
+    console.log("nginxCnf", nginxCnf);
 
     if (nginxCnf) {
         finalCmd += `\ncat << 'EOF' > /etc/nginx/nginx.conf\n`;

@@ -25,7 +25,6 @@ deployments:
               type: load_balancer
               allow_ips:
                   - cloudflare
-                  - 5.78.1.245
               target_services:
                   - service_name: api
                     port: 3000

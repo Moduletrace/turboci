@@ -2,6 +2,7 @@ import type {
     ParsedDeploymentServiceConfig,
     TCIGlobalConfig,
     TCIConfigLBLocation,
+    TCIConfigServiceConfigLBTarget,
 } from "@/types";
 import { _n } from "@/utils/numberfy";
 import grabNginxUpstreamBlock from "./grab-nginx-upstream-block";
@@ -9,6 +10,9 @@ import AppData from "@/data/app-data";
 import _ from "lodash";
 import grabUpstreamNames from "@/utils/grab-upstream-names";
 import expandAllowIps from "@/utils/expand-allow-ips";
+import grabDefaultProxyLocation from "./grab-nginx-config-default-proxy";
+import grabNginxRateLimitingConfig from "./grab-nginx-rate-limit-config";
+import grabNginxDirectivesConfig from "./grab-nginx-directives-config";
 
 type Params = {
     load_balancer_service: ParsedDeploymentServiceConfig;
@@ -38,12 +42,23 @@ export default async function grabLoadBalancerNginxConfig(params: Params) {
 
     for (let i = 0; i < lb_target_services.length; i++) {
         const lb_service = lb_target_services[i];
-        if (!lb_service?.locations?.length) continue;
+
+        if (!lb_service?.service_name) {
+            continue;
+        }
+
+        const all_locations = lb_service?.locations || [];
+
+        if (lb_service?.target_location) {
+            all_locations.unshift(lb_service.target_location);
+        }
+
+        if (!all_locations?.length) continue;
 
         const pathToZone = new Map<string, string>();
 
-        for (let j = 0; j < lb_service.locations.length; j++) {
-            const loc = lb_service.locations[j];
+        for (let j = 0; j < all_locations.length; j++) {
+            const loc = all_locations[j];
             if (!loc?.rate_limit) continue;
 
             const zone_name = `tci_${sanitizeZoneName(lb_service.service_name)}_${j}`;
@@ -114,6 +129,8 @@ export default async function grabLoadBalancerNginxConfig(params: Params) {
                 allow_ips: load_balancer_service.allow_ips,
                 locations: lb_service.locations,
                 zone_map,
+                service: load_balancer_service,
+                lb_service,
             });
         }
     }
@@ -129,6 +146,8 @@ type GrabServerBlockParams = {
     allow_ips?: string[];
     locations?: TCIConfigLBLocation[];
     zone_map?: Map<string, string>;
+    service: ParsedDeploymentServiceConfig;
+    lb_service: TCIConfigServiceConfigLBTarget;
 };
 
 function grabServerBlock({
@@ -137,6 +156,8 @@ function grabServerBlock({
     allow_ips,
     locations,
     zone_map,
+    service,
+    lb_service,
 }: GrabServerBlockParams) {
     const expanded_ips = allow_ips?.length
         ? expandAllowIps(allow_ips)
@@ -167,7 +188,13 @@ function grabServerBlock({
             srvBlk += `        deny all;\n`;
         }
 
-        srvBlk += grabLocation({ service_name, locations, zone_map });
+        srvBlk += grabLocation({
+            service_name,
+            locations,
+            zone_map,
+            service,
+            lb_service,
+        });
         srvBlk += `    }\n`;
     } else {
         srvBlk += `    server {\n`;
@@ -182,7 +209,13 @@ function grabServerBlock({
             srvBlk += `        deny all;\n`;
         }
 
-        srvBlk += grabLocation({ service_name, locations, zone_map });
+        srvBlk += grabLocation({
+            service_name,
+            locations,
+            zone_map,
+            service,
+            lb_service,
+        });
         srvBlk += `    }\n`;
     }
 
@@ -193,12 +226,16 @@ type GrabLocationParams = {
     service_name: string;
     locations?: TCIConfigLBLocation[];
     zone_map?: Map<string, string>;
+    service: ParsedDeploymentServiceConfig;
+    lb_service: TCIConfigServiceConfigLBTarget;
 };
 
 function grabLocation({
     service_name,
     locations,
     zone_map,
+    service,
+    lb_service,
 }: GrabLocationParams) {
     const { upstream_name } = grabUpstreamNames({ service_name });
 
@@ -210,50 +247,62 @@ function grabLocation({
 
     if (locations?.length) {
         for (const location of locations) {
-            loc += renderCustomLocation({ location, upstream_name, zone_map });
+            loc += renderCustomLocation({
+                location,
+                upstream_name,
+                zone_map,
+            });
         }
     }
 
-    // Render the default proxy location only if the user hasn't defined one for "/"
     const hasRootLocation = locations?.some((l) => l.path === "/");
-    if (!hasRootLocation) {
-        loc += renderDefaultProxyLocation(upstream_name);
+
+    if (hasRootLocation) {
+        console.error(
+            `Root Location is already handled. Use the \`target_location\` property to append extra rules to the root location.`,
+        );
+        process.exit(1);
     }
+
+    loc += renderDefaultProxyLocation({
+        upstream_name,
+        service,
+        lb_service,
+        zone_map,
+    });
 
     loc += `\n`;
 
     return loc;
 }
 
-function renderDefaultProxyLocation(upstream_name: string): string {
+function renderDefaultProxyLocation({
+    upstream_name,
+    service,
+    lb_service,
+    zone_map,
+}: {
+    upstream_name: string;
+    service: ParsedDeploymentServiceConfig;
+    lb_service: TCIConfigServiceConfigLBTarget;
+    zone_map?: Map<string, string>;
+}): string {
     let loc = "";
 
     loc += `        location / {\n`;
-    loc += `            proxy_pass http://${upstream_name};\n`;
-    loc += `            proxy_set_header Host \\$host;\n`;
-    loc += `            proxy_set_header X-Real-IP \\$remote_addr;\n`;
-    loc += `            proxy_set_header X-Forwarded-For \\$proxy_add_x_forwarded_for;\n`;
 
-    loc += `            proxy_http_version 1.1;\n`;
-    loc += `            proxy_set_header Upgrade \\$http_upgrade;\n`;
-    loc += `            proxy_set_header Connection "upgrade";\n`;
+    loc += grabNginxRateLimitingConfig({
+        location: lb_service.target_location,
+        zone_map,
+    });
 
-    const proxy_connect_timeout = AppData["load_balancer_connect_timeout"];
-    const proxy_read_timeout = AppData["load_balancer_read_timeout"];
-    const send_timeout = AppData["load_balancer_send_timeout"];
+    loc += `${grabDefaultProxyLocation({
+        upstream_name,
+    })}\n`;
 
-    loc += `            proxy_connect_timeout       ${proxy_connect_timeout}s;\n`;
-    loc += `            proxy_send_timeout          ${send_timeout}s;\n`;
-    loc += `            proxy_read_timeout          ${proxy_read_timeout}s;\n`;
-    loc += `            send_timeout                ${send_timeout}s;\n`;
-
-    const next_upstream_tries = AppData["load_balancer_next_upstream_tries"];
-    const next_upstream_timeout =
-        AppData["load_balancer_next_upstream_timeout"];
-
-    loc += `            proxy_next_upstream http_500 http_502 http_503 http_504 error timeout invalid_header;\n`;
-    loc += `            proxy_next_upstream_tries ${next_upstream_tries};\n`;
-    loc += `            proxy_next_upstream_timeout ${next_upstream_timeout}s;\n`;
+    loc += grabNginxDirectivesConfig({
+        location: lb_service.target_location,
+    });
 
     loc += `        }\n`;
 
@@ -275,63 +324,18 @@ function renderCustomLocation({
 
     loc += `        location ${location.path} {\n`;
 
-    // Rate limiting
-    if (location.rate_limit && zone_map) {
-        const zone_name = zone_map.get(location.path);
-        if (zone_name) {
-            let limit_req = `limit_req zone=${zone_name}`;
-            if (location.rate_limit.burst !== undefined) {
-                limit_req += ` burst=${location.rate_limit.burst}`;
-            }
-            if (location.rate_limit.nodelay) {
-                limit_req += ` nodelay`;
-            }
-            loc += `            ${limit_req};\n`;
-        }
-    }
+    loc += grabNginxRateLimitingConfig({
+        location,
+        zone_map,
+    });
 
-    // Proxy pass to upstream (unless explicitly disabled)
     if (location.proxy !== false) {
-        loc += `            proxy_pass http://${upstream_name};\n`;
-        loc += `            proxy_set_header Host \\$host;\n`;
-        loc += `            proxy_set_header X-Real-IP \\$remote_addr;\n`;
-        loc += `            proxy_set_header X-Forwarded-For \\$proxy_add_x_forwarded_for;\n`;
-
-        loc += `            proxy_http_version 1.1;\n`;
-        loc += `            proxy_set_header Upgrade \\$http_upgrade;\n`;
-        loc += `            proxy_set_header Connection "upgrade";\n`;
-
-        const proxy_connect_timeout = AppData["load_balancer_connect_timeout"];
-        const proxy_read_timeout = AppData["load_balancer_read_timeout"];
-        const send_timeout = AppData["load_balancer_send_timeout"];
-
-        loc += `            proxy_connect_timeout       ${proxy_connect_timeout}s;\n`;
-        loc += `            proxy_send_timeout          ${send_timeout}s;\n`;
-        loc += `            proxy_read_timeout          ${proxy_read_timeout}s;\n`;
-        loc += `            send_timeout                ${send_timeout}s;\n`;
-
-        const next_upstream_tries =
-            AppData["load_balancer_next_upstream_tries"];
-        const next_upstream_timeout =
-            AppData["load_balancer_next_upstream_timeout"];
-
-        loc += `            proxy_next_upstream http_500 http_502 http_503 http_504 error timeout invalid_header;\n`;
-        loc += `            proxy_next_upstream_tries ${next_upstream_tries};\n`;
-        loc += `            proxy_next_upstream_timeout ${next_upstream_timeout}s;\n`;
+        loc += `${grabDefaultProxyLocation({
+            upstream_name,
+        })}\n`;
     }
 
-    // Arbitrary nginx directives
-    if (location.directives) {
-        for (const [key, value] of Object.entries(location.directives)) {
-            if (Array.isArray(value)) {
-                for (const v of value) {
-                    loc += `            ${key} ${v};\n`;
-                }
-            } else {
-                loc += `            ${key} ${value};\n`;
-            }
-        }
-    }
+    loc += grabNginxDirectivesConfig({ location });
 
     loc += `        }\n`;
 
