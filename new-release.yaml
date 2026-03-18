@@ -1,0 +1,36 @@
+# ──────────────────────────────────────────────────────────────
+#  TurboCI Release Config — read by publish.sh
+#  Edit the fields below, then run: ./publish.sh
+# ──────────────────────────────────────────────────────────────
+
+# Semver bump type or an explicit version number.
+# Options: patch | minor | major | x.y.z
+version: minor
+
+# Branch to create the release commit on and push to.
+branch: main
+
+# Git commit message.
+# Placeholders: {version} → e.g. 1.2.0   {tag} → e.g. v1.2.0
+commit_message: "Release {tag}"
+
+# GitHub release title shown on the releases page.
+# Placeholders: {version} and {tag} are supported here too.
+title: "{tag}"
+
+# GitHub release notes (markdown supported).
+# Leave this empty to auto-generate notes from merged PRs and commits.
+notes: |
+  ## What's new
+
+  -
+
+  ## Bug fixes
+
+  -
+
+# Mark this as a pre-release on GitHub (e.g. for betas / release candidates).
+pre_release: false
+
+# Upload compiled binaries to Cloudflare R2 after the GitHub release.
+upload_r2: false

@@ -1,0 +1,12 @@
+{
+    "name": "TurboCI Config",
+    "description": "TurboCI deployment configuration file (.turboci/config.yaml)",
+    "fileMatch": [
+        "**/.turboci/config.yaml",
+        "**/.turboci/config.yml"
+    ],
+    "url": "https://raw.githubusercontent.com/Moduletrace/turboci/main/schema/turboci.schema.json",
+    "versions": {
+        "1.1.0": "https://raw.githubusercontent.com/Moduletrace/turboci/main/schema/turboci.schema.json"
+    }
+}

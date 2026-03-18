@@ -11,14 +11,16 @@
         "compile": "bun build ./bin.ts --compile --outfile bin/turboci",
         "build": "bun build ./bin.ts --target=node --outfile=dist/turboci.js --minify",
         "build:all": "bun run compile && bun run build",
-        "upload:r2": "bun build:all && bun secrets/write-binaries.ts"
+        "upload:r2": "bun build:all && bun secrets/write-binaries.ts",
+        "schema": "bun scripts/generate-schema.ts"
     },
     "devDependencies": {
         "@types/bun": "latest",
         "@types/inquirer": "^9.0.9",
         "@types/js-yaml": "^4.0.9",
         "@types/lodash": "^4.17.20",
-        "@types/node": "^24.1.0"
+        "@types/node": "^24.1.0",
+        "typescript-json-schema": "^0.67.1"
     },
     "peerDependencies": {
         "typescript": "^5"

@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../../../../schema/turboci.schema.json
 deployments:
     - deployment_name: github_public_repo
       provider: hetzner

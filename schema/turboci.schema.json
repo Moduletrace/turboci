@@ -1,0 +1,1297 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "anyOf": [
+        {
+            "items": {
+                "description": "A single deployment definition as written in `config.yaml`.\nOne deployment maps to one cloud region/provider combination and owns\na set of named services.",
+                "properties": {
+                    "availability_zone": {
+                        "description": "Provider-specific availability zone, e.g. AWS `\"us-east-1a\"`.",
+                        "title": "availability_zone",
+                        "type": "string"
+                    },
+                    "deployment_name": {
+                        "description": "Unique identifier for this deployment. Used in CLI `--target` flags and state files.",
+                        "title": "deployment_name",
+                        "type": "string"
+                    },
+                    "description": {
+                        "title": "description",
+                        "type": "string"
+                    },
+                    "duplicate_deployment_name": {
+                        "description": "When set, this deployment is treated as a copy of the named deployment.\nAll services and settings are inherited and can be overridden.",
+                        "title": "duplicate_deployment_name",
+                        "type": "string"
+                    },
+                    "env": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "Environment variables injected into every service in this deployment.",
+                        "title": "env",
+                        "type": "object"
+                    },
+                    "env_file": {
+                        "description": "Path to a `.env` file whose contents are injected into every service.",
+                        "title": "env_file",
+                        "type": "string"
+                    },
+                    "location": {
+                        "description": "Provider-specific datacenter/region slug, e.g. `\"ash\"` for Hetzner Ashburn.",
+                        "title": "location",
+                        "type": "string"
+                    },
+                    "pre_deployment": {
+                        "description": "Commands run once on the relay server before any service setup begins.",
+                        "properties": {
+                            "cmds": {
+                                "description": "Inline shell commands executed sequentially.",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "title": "cmds",
+                                "type": "array"
+                            },
+                            "file": {
+                                "description": "Path to a shell script file on the target server to execute instead of `cmds`.",
+                                "title": "file",
+                                "type": "string"
+                            },
+                            "work_dir": {
+                                "description": "Working directory for the commands or script.",
+                                "title": "work_dir",
+                                "type": "string"
+                            }
+                        },
+                        "title": "pre_deployment",
+                        "type": "object"
+                    },
+                    "provider": {
+                        "enum": [
+                            "aws",
+                            "azure",
+                            "gcp",
+                            "hetzner"
+                        ],
+                        "title": "provider",
+                        "type": "string"
+                    },
+                    "relay_server_options": {
+                        "description": "Options for the relay server provisioned for each deployment.",
+                        "properties": {
+                            "server_type": {
+                                "description": "Override the default relay server hardware type (e.g. `\"cx22\"` on Hetzner).",
+                                "title": "server_type",
+                                "type": "string"
+                            }
+                        },
+                        "title": "relay_server_options",
+                        "type": "object"
+                    },
+                    "services": {
+                        "additionalProperties": {
+                            "description": "Configuration for a single named service within a deployment.\nA service represents one logical tier (e.g. `web`, `api`, `lb`).\nThe `type` field selects the deployment path; all other fields are\ninterpreted in the context of that type.",
+                            "properties": {
+                                "allow_ips": {
+                                    "description": "Restrict inbound requests to these IPs/CIDRs only. All other IPs are\ndenied. Applies to all server blocks on this load balancer.\n\nAccepts raw IPs/CIDRs or named providers which are automatically\nexpanded to their published ranges. Supported providers: \"cloudflare\".\n\nExample: [\"cloudflare\", \"5.78.1.245\"]\n\nOnly applies to `load_balancer` services.",
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "title": "allow_ips",
+                                    "type": "array"
+                                },
+                                "clusters": {
+                                    "description": "Number of server clusters. During rolling updates, clusters are\ndeployed one at a time for zero-downtime. Defaults to `1`.",
+                                    "title": "clusters",
+                                    "type": "number"
+                                },
+                                "dependencies": {
+                                    "$ref": "#/definitions/%7Bapt%3F%3Astring%5B%5D%7Cundefined%3Bturboci%3F%3Astring%5B%5D%7Cundefined%3B%7D",
+                                    "description": "Packages to install on provisioned servers before running flight scripts.\nUse `apt` for system packages, `turboci` for managed runtimes (bun, node, docker).",
+                                    "title": "dependencies"
+                                },
+                                "dir_mappings": {
+                                    "description": "Local → remote directory mappings synced before each deployment.",
+                                    "items": {
+                                        "description": "A local → remote directory sync mapping used during the prepare phase.",
+                                        "properties": {
+                                            "dst": {
+                                                "description": "Absolute destination path on target servers.",
+                                                "title": "dst",
+                                                "type": "string"
+                                            },
+                                            "ignore_file": {
+                                                "description": "Path to an rsync-style ignore file.",
+                                                "title": "ignore_file",
+                                                "type": "string"
+                                            },
+                                            "ignore_patterns": {
+                                                "description": "Explicit patterns to exclude from the sync.",
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "title": "ignore_patterns",
+                                                "type": "array"
+                                            },
+                                            "relay_ignore": {
+                                                "description": "Patterns excluded only on the local → relay leg of the sync.",
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "title": "relay_ignore",
+                                                "type": "array"
+                                            },
+                                            "src": {
+                                                "description": "Local source path (relative to the `.turboci` directory).",
+                                                "title": "src",
+                                                "type": "string"
+                                            },
+                                            "use_gitignore": {
+                                                "description": "If `true`, applies the project's `.gitignore` as rsync exclude rules.",
+                                                "title": "use_gitignore",
+                                                "type": "boolean"
+                                            }
+                                        },
+                                        "required": [
+                                            "dst",
+                                            "src"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "title": "dir_mappings",
+                                    "type": "array"
+                                },
+                                "duplicate_service_name": {
+                                    "description": "When set, this service is treated as a copy of the named service\nwithin the same deployment.",
+                                    "title": "duplicate_service_name",
+                                    "type": "string"
+                                },
+                                "enable_public_ip": {
+                                    "description": "When `true`, servers for this service receive a public IP in addition to\ntheir private IP. Defaults to `false` — servers are private-only and\naccessed exclusively through the relay.",
+                                    "title": "enable_public_ip",
+                                    "type": "boolean"
+                                },
+                                "env": {
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    },
+                                    "description": "Environment variables injected into this service's servers.",
+                                    "title": "env",
+                                    "type": "object"
+                                },
+                                "env_file": {
+                                    "description": "Path to a `.env` file loaded into this service's environment.",
+                                    "title": "env_file",
+                                    "type": "string"
+                                },
+                                "git": {
+                                    "anyOf": [
+                                        {
+                                            "description": "Configuration for pulling a git repository onto target servers.",
+                                            "properties": {
+                                                "api_key": {
+                                                    "description": "API key or personal access token for private repo access.",
+                                                    "title": "api_key",
+                                                    "type": "string"
+                                                },
+                                                "branch": {
+                                                    "title": "branch",
+                                                    "type": "string"
+                                                },
+                                                "host": {
+                                                    "description": "Custom git host, used for self-hosted Gitea/Gitlab instances.",
+                                                    "title": "host",
+                                                    "type": "string"
+                                                },
+                                                "keep_updated": {
+                                                    "description": "If `true`, TurboCI continuously polls the repository and re-runs\nthe flight scripts whenever new commits are detected.",
+                                                    "title": "keep_updated",
+                                                    "type": "boolean"
+                                                },
+                                                "paradigm": {
+                                                    "description": "Git hosting provider. Affects clone URL construction and auth.",
+                                                    "enum": [
+                                                        "gitea",
+                                                        "github",
+                                                        "gitlab"
+                                                    ],
+                                                    "title": "paradigm",
+                                                    "type": "string"
+                                                },
+                                                "public_repo": {
+                                                    "description": "If `true`, clones without authentication (no deploy key required).",
+                                                    "title": "public_repo",
+                                                    "type": "boolean"
+                                                },
+                                                "repo_url": {
+                                                    "title": "repo_url",
+                                                    "type": "string"
+                                                },
+                                                "username": {
+                                                    "title": "username",
+                                                    "type": "string"
+                                                },
+                                                "work_dir": {
+                                                    "description": "Absolute path on target servers where the repo is cloned.\nDefaults to `/app`.",
+                                                    "title": "work_dir",
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "repo_url"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        {
+                                            "items": {
+                                                "description": "Configuration for pulling a git repository onto target servers.",
+                                                "properties": {
+                                                    "api_key": {
+                                                        "description": "API key or personal access token for private repo access.",
+                                                        "title": "api_key",
+                                                        "type": "string"
+                                                    },
+                                                    "branch": {
+                                                        "title": "branch",
+                                                        "type": "string"
+                                                    },
+                                                    "host": {
+                                                        "description": "Custom git host, used for self-hosted Gitea/Gitlab instances.",
+                                                        "title": "host",
+                                                        "type": "string"
+                                                    },
+                                                    "keep_updated": {
+                                                        "description": "If `true`, TurboCI continuously polls the repository and re-runs\nthe flight scripts whenever new commits are detected.",
+                                                        "title": "keep_updated",
+                                                        "type": "boolean"
+                                                    },
+                                                    "paradigm": {
+                                                        "description": "Git hosting provider. Affects clone URL construction and auth.",
+                                                        "enum": [
+                                                            "gitea",
+                                                            "github",
+                                                            "gitlab"
+                                                        ],
+                                                        "title": "paradigm",
+                                                        "type": "string"
+                                                    },
+                                                    "public_repo": {
+                                                        "description": "If `true`, clones without authentication (no deploy key required).",
+                                                        "title": "public_repo",
+                                                        "type": "boolean"
+                                                    },
+                                                    "repo_url": {
+                                                        "title": "repo_url",
+                                                        "type": "string"
+                                                    },
+                                                    "username": {
+                                                        "title": "username",
+                                                        "type": "string"
+                                                    },
+                                                    "work_dir": {
+                                                        "description": "Absolute path on target servers where the repo is cloned.\nDefaults to `/app`.",
+                                                        "title": "work_dir",
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "repo_url"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            "type": "array"
+                                        }
+                                    ],
+                                    "description": "Git repository source(s) to clone/pull onto target servers.",
+                                    "title": "git"
+                                },
+                                "healthcheck": {
+                                    "description": "Healthcheck run after the service starts to verify it is live.",
+                                    "properties": {
+                                        "cmd": {
+                                            "title": "cmd",
+                                            "type": "string"
+                                        },
+                                        "test": {
+                                            "title": "test",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "cmd",
+                                        "test"
+                                    ],
+                                    "title": "healthcheck",
+                                    "type": "object"
+                                },
+                                "init": {
+                                    "description": "Shell commands run once on first deploy (not on re-deploys).",
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "title": "init",
+                                    "type": "array"
+                                },
+                                "instances": {
+                                    "description": "Number of servers to provision per cluster. Defaults to `1`.",
+                                    "title": "instances",
+                                    "type": "number"
+                                },
+                                "logs": {
+                                    "description": "Commands or log sources tailed when `turboci control` streams logs\nfor this service.",
+                                    "items": {
+                                        "$ref": "#/definitions/TCIConfigServiceConfigLog"
+                                    },
+                                    "title": "logs",
+                                    "type": "array"
+                                },
+                                "os": {
+                                    "description": "OS image slug to use when creating servers for this service.",
+                                    "title": "os",
+                                    "type": "string"
+                                },
+                                "run": {
+                                    "description": "Preflight, start, and postflight shell scripts for this service.",
+                                    "properties": {
+                                        "postflight": {
+                                            "description": "Commands run after the service starts (smoke tests, cache warm-up, etc.).",
+                                            "properties": {
+                                                "cmds": {
+                                                    "description": "Inline shell commands executed sequentially.",
+                                                    "items": {
+                                                        "type": "string"
+                                                    },
+                                                    "title": "cmds",
+                                                    "type": "array"
+                                                },
+                                                "file": {
+                                                    "description": "Path to a shell script file on the target server to execute instead of `cmds`.",
+                                                    "title": "file",
+                                                    "type": "string"
+                                                },
+                                                "work_dir": {
+                                                    "description": "Working directory for the commands or script.",
+                                                    "title": "work_dir",
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "title": "postflight",
+                                            "type": "object"
+                                        },
+                                        "preflight": {
+                                            "description": "Commands run before the service starts (install deps, migrations, etc.).",
+                                            "properties": {
+                                                "cmds": {
+                                                    "description": "Inline shell commands executed sequentially.",
+                                                    "items": {
+                                                        "type": "string"
+                                                    },
+                                                    "title": "cmds",
+                                                    "type": "array"
+                                                },
+                                                "file": {
+                                                    "description": "Path to a shell script file on the target server to execute instead of `cmds`.",
+                                                    "title": "file",
+                                                    "type": "string"
+                                                },
+                                                "work_dir": {
+                                                    "description": "Working directory for the commands or script.",
+                                                    "title": "work_dir",
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "title": "preflight",
+                                            "type": "object"
+                                        },
+                                        "start": {
+                                            "description": "Commands that start the service process (must be non-blocking or daemonised).",
+                                            "properties": {
+                                                "cmds": {
+                                                    "description": "Inline shell commands executed sequentially.",
+                                                    "items": {
+                                                        "type": "string"
+                                                    },
+                                                    "title": "cmds",
+                                                    "type": "array"
+                                                },
+                                                "file": {
+                                                    "description": "Path to a shell script file on the target server to execute instead of `cmds`.",
+                                                    "title": "file",
+                                                    "type": "string"
+                                                },
+                                                "work_dir": {
+                                                    "description": "Working directory for the commands or script.",
+                                                    "title": "work_dir",
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "title": "start",
+                                            "type": "object"
+                                        },
+                                        "work_dir": {
+                                            "description": "Default working directory for all scripts in this run block.",
+                                            "title": "work_dir",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "title": "run",
+                                    "type": "object"
+                                },
+                                "server_type": {
+                                    "description": "Hardware/instance type slug, e.g. `\"cpx21\"` (Hetzner) or `\"t3.small\"` (AWS).",
+                                    "title": "server_type",
+                                    "type": "string"
+                                },
+                                "ssl": {
+                                    "description": "SSL/TLS configuration. Triggers Certbot certificate provisioning.",
+                                    "properties": {
+                                        "email": {
+                                            "title": "email",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "email"
+                                    ],
+                                    "title": "ssl",
+                                    "type": "object"
+                                },
+                                "target_services": {
+                                    "description": "Target services this load balancer proxies to.\nOnly used when `type` is `\"load_balancer\"`.",
+                                    "items": {
+                                        "description": "A single upstream target for a load balancer service.\nEach target maps to one NGINX `upstream` block and one `server` block.",
+                                        "properties": {
+                                            "backup": {
+                                                "description": "If `true`, this target is used as a fallback when all primary servers are down.",
+                                                "title": "backup",
+                                                "type": "boolean"
+                                            },
+                                            "domains": {
+                                                "description": "Domains to attach to this target's server block. Triggers TLS termination\nwhen `ssl` is configured on the parent service. Accepts plain strings or\n`TCIConfigServiceDomain` objects.",
+                                                "items": {
+                                                    "anyOf": [
+                                                        {
+                                                            "description": "An explicitly named domain, used as an alternative to a plain domain string.",
+                                                            "properties": {
+                                                                "domain_name": {
+                                                                    "title": "domain_name",
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "domain_name"
+                                                            ],
+                                                            "type": "object"
+                                                        },
+                                                        {
+                                                            "type": "string"
+                                                        }
+                                                    ]
+                                                },
+                                                "title": "domains",
+                                                "type": "array"
+                                            },
+                                            "locations": {
+                                                "description": "Custom NGINX `location` blocks rendered inside this target's server block.\nThe default `location /` proxy block is auto-generated unless a `\"/\"` path\nis explicitly defined here.",
+                                                "items": {
+                                                    "description": "A custom NGINX `location` block rendered inside a load balancer server block.\nBy default each location proxies to the upstream; set `proxy: false` for\nlocations that should be handled locally (static files, redirects, etc.).",
+                                                    "properties": {
+                                                        "directives": {
+                                                            "additionalProperties": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "items": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "type": "array"
+                                                                    },
+                                                                    {
+                                                                        "type": "string"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "description": "Arbitrary NGINX directives added verbatim inside this location block.\nString values emit a single directive; array values emit one line per entry.\n\nExample:\n```yaml\ndirectives:\n  root: /var/www/html\n  add_header:\n    - \"Cache-Control 'public'\"\n    - \"X-Frame-Options DENY\"\n```",
+                                                            "title": "directives",
+                                                            "type": "object"
+                                                        },
+                                                        "path": {
+                                                            "description": "NGINX location path or pattern.\nSupports all NGINX matching prefixes: `\"/\"`, `\"/api/\"`, `\"= /ping\"`,\n`\"~* \\\\.(jpg|png)$\"`, etc.",
+                                                            "title": "path",
+                                                            "type": "string"
+                                                        },
+                                                        "proxy": {
+                                                            "description": "If `false`, the upstream `proxy_pass` block is omitted for this location.\nUse when serving static files, issuing redirects, or returning custom\nresponses. Defaults to `true`.",
+                                                            "title": "proxy",
+                                                            "type": "boolean"
+                                                        },
+                                                        "rate_limit": {
+                                                            "description": "Rate limiting applied to this location.",
+                                                            "properties": {
+                                                                "burst": {
+                                                                    "description": "Burst queue size — requests exceeding the rate are queued up to this limit.",
+                                                                    "title": "burst",
+                                                                    "type": "number"
+                                                                },
+                                                                "key": {
+                                                                    "description": "NGINX rate limit key. Defaults to `\"$binary_remote_addr\"` (per client IP).\nCan be any NGINX variable, e.g. `\"$http_x_forwarded_for\"`.",
+                                                                    "title": "key",
+                                                                    "type": "string"
+                                                                },
+                                                                "nodelay": {
+                                                                    "description": "If `true`, burst requests are served immediately rather than delayed.",
+                                                                    "title": "nodelay",
+                                                                    "type": "boolean"
+                                                                },
+                                                                "rate": {
+                                                                    "description": "Request rate, e.g. `\"10r/s\"` or `\"100r/m\"`.",
+                                                                    "title": "rate",
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "rate"
+                                                            ],
+                                                            "title": "rate_limit",
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "path"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                "title": "locations",
+                                                "type": "array"
+                                            },
+                                            "port": {
+                                                "description": "Port the target service listens on.",
+                                                "title": "port",
+                                                "type": "number"
+                                            },
+                                            "service_name": {
+                                                "description": "Name of the service in the same deployment to proxy traffic to.",
+                                                "title": "service_name",
+                                                "type": "string"
+                                            },
+                                            "weight": {
+                                                "description": "NGINX upstream weight for weighted round-robin load distribution.",
+                                                "title": "weight",
+                                                "type": "number"
+                                            }
+                                        },
+                                        "required": [
+                                            "port",
+                                            "service_name"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "title": "target_services",
+                                    "type": "array"
+                                },
+                                "type": {
+                                    "description": "Deployment strategy. Defaults to `\"default\"` (bare-VM + scripts).",
+                                    "enum": [
+                                        "default",
+                                        "docker",
+                                        "load_balancer"
+                                    ],
+                                    "title": "type",
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        },
+                        "description": "Map of service name → service config. Key becomes the service identifier.",
+                        "title": "services",
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "deployment_name",
+                    "provider",
+                    "services"
+                ],
+                "type": "object"
+            },
+            "type": "array"
+        },
+        {
+            "properties": {
+                "deployments": {
+                    "items": {
+                        "description": "A single deployment definition as written in `config.yaml`.\nOne deployment maps to one cloud region/provider combination and owns\na set of named services.",
+                        "properties": {
+                            "availability_zone": {
+                                "description": "Provider-specific availability zone, e.g. AWS `\"us-east-1a\"`.",
+                                "title": "availability_zone",
+                                "type": "string"
+                            },
+                            "deployment_name": {
+                                "description": "Unique identifier for this deployment. Used in CLI `--target` flags and state files.",
+                                "title": "deployment_name",
+                                "type": "string"
+                            },
+                            "description": {
+                                "title": "description",
+                                "type": "string"
+                            },
+                            "duplicate_deployment_name": {
+                                "description": "When set, this deployment is treated as a copy of the named deployment.\nAll services and settings are inherited and can be overridden.",
+                                "title": "duplicate_deployment_name",
+                                "type": "string"
+                            },
+                            "env": {
+                                "additionalProperties": {
+                                    "type": "string"
+                                },
+                                "description": "Environment variables injected into every service in this deployment.",
+                                "title": "env",
+                                "type": "object"
+                            },
+                            "env_file": {
+                                "description": "Path to a `.env` file whose contents are injected into every service.",
+                                "title": "env_file",
+                                "type": "string"
+                            },
+                            "location": {
+                                "description": "Provider-specific datacenter/region slug, e.g. `\"ash\"` for Hetzner Ashburn.",
+                                "title": "location",
+                                "type": "string"
+                            },
+                            "pre_deployment": {
+                                "description": "Commands run once on the relay server before any service setup begins.",
+                                "properties": {
+                                    "cmds": {
+                                        "description": "Inline shell commands executed sequentially.",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "title": "cmds",
+                                        "type": "array"
+                                    },
+                                    "file": {
+                                        "description": "Path to a shell script file on the target server to execute instead of `cmds`.",
+                                        "title": "file",
+                                        "type": "string"
+                                    },
+                                    "work_dir": {
+                                        "description": "Working directory for the commands or script.",
+                                        "title": "work_dir",
+                                        "type": "string"
+                                    }
+                                },
+                                "title": "pre_deployment",
+                                "type": "object"
+                            },
+                            "provider": {
+                                "enum": [
+                                    "aws",
+                                    "azure",
+                                    "gcp",
+                                    "hetzner"
+                                ],
+                                "title": "provider",
+                                "type": "string"
+                            },
+                            "relay_server_options": {
+                                "description": "Options for the relay server provisioned for each deployment.",
+                                "properties": {
+                                    "server_type": {
+                                        "description": "Override the default relay server hardware type (e.g. `\"cx22\"` on Hetzner).",
+                                        "title": "server_type",
+                                        "type": "string"
+                                    }
+                                },
+                                "title": "relay_server_options",
+                                "type": "object"
+                            },
+                            "services": {
+                                "additionalProperties": {
+                                    "description": "Configuration for a single named service within a deployment.\nA service represents one logical tier (e.g. `web`, `api`, `lb`).\nThe `type` field selects the deployment path; all other fields are\ninterpreted in the context of that type.",
+                                    "properties": {
+                                        "allow_ips": {
+                                            "description": "Restrict inbound requests to these IPs/CIDRs only. All other IPs are\ndenied. Applies to all server blocks on this load balancer.\n\nAccepts raw IPs/CIDRs or named providers which are automatically\nexpanded to their published ranges. Supported providers: \"cloudflare\".\n\nExample: [\"cloudflare\", \"5.78.1.245\"]\n\nOnly applies to `load_balancer` services.",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "title": "allow_ips",
+                                            "type": "array"
+                                        },
+                                        "clusters": {
+                                            "description": "Number of server clusters. During rolling updates, clusters are\ndeployed one at a time for zero-downtime. Defaults to `1`.",
+                                            "title": "clusters",
+                                            "type": "number"
+                                        },
+                                        "dependencies": {
+                                            "$ref": "#/definitions/%7Bapt%3F%3Astring%5B%5D%7Cundefined%3Bturboci%3F%3Astring%5B%5D%7Cundefined%3B%7D",
+                                            "description": "Packages to install on provisioned servers before running flight scripts.\nUse `apt` for system packages, `turboci` for managed runtimes (bun, node, docker).",
+                                            "title": "dependencies"
+                                        },
+                                        "dir_mappings": {
+                                            "description": "Local → remote directory mappings synced before each deployment.",
+                                            "items": {
+                                                "description": "A local → remote directory sync mapping used during the prepare phase.",
+                                                "properties": {
+                                                    "dst": {
+                                                        "description": "Absolute destination path on target servers.",
+                                                        "title": "dst",
+                                                        "type": "string"
+                                                    },
+                                                    "ignore_file": {
+                                                        "description": "Path to an rsync-style ignore file.",
+                                                        "title": "ignore_file",
+                                                        "type": "string"
+                                                    },
+                                                    "ignore_patterns": {
+                                                        "description": "Explicit patterns to exclude from the sync.",
+                                                        "items": {
+                                                            "type": "string"
+                                                        },
+                                                        "title": "ignore_patterns",
+                                                        "type": "array"
+                                                    },
+                                                    "relay_ignore": {
+                                                        "description": "Patterns excluded only on the local → relay leg of the sync.",
+                                                        "items": {
+                                                            "type": "string"
+                                                        },
+                                                        "title": "relay_ignore",
+                                                        "type": "array"
+                                                    },
+                                                    "src": {
+                                                        "description": "Local source path (relative to the `.turboci` directory).",
+                                                        "title": "src",
+                                                        "type": "string"
+                                                    },
+                                                    "use_gitignore": {
+                                                        "description": "If `true`, applies the project's `.gitignore` as rsync exclude rules.",
+                                                        "title": "use_gitignore",
+                                                        "type": "boolean"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "dst",
+                                                    "src"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            "title": "dir_mappings",
+                                            "type": "array"
+                                        },
+                                        "duplicate_service_name": {
+                                            "description": "When set, this service is treated as a copy of the named service\nwithin the same deployment.",
+                                            "title": "duplicate_service_name",
+                                            "type": "string"
+                                        },
+                                        "enable_public_ip": {
+                                            "description": "When `true`, servers for this service receive a public IP in addition to\ntheir private IP. Defaults to `false` — servers are private-only and\naccessed exclusively through the relay.",
+                                            "title": "enable_public_ip",
+                                            "type": "boolean"
+                                        },
+                                        "env": {
+                                            "additionalProperties": {
+                                                "type": "string"
+                                            },
+                                            "description": "Environment variables injected into this service's servers.",
+                                            "title": "env",
+                                            "type": "object"
+                                        },
+                                        "env_file": {
+                                            "description": "Path to a `.env` file loaded into this service's environment.",
+                                            "title": "env_file",
+                                            "type": "string"
+                                        },
+                                        "git": {
+                                            "anyOf": [
+                                                {
+                                                    "description": "Configuration for pulling a git repository onto target servers.",
+                                                    "properties": {
+                                                        "api_key": {
+                                                            "description": "API key or personal access token for private repo access.",
+                                                            "title": "api_key",
+                                                            "type": "string"
+                                                        },
+                                                        "branch": {
+                                                            "title": "branch",
+                                                            "type": "string"
+                                                        },
+                                                        "host": {
+                                                            "description": "Custom git host, used for self-hosted Gitea/Gitlab instances.",
+                                                            "title": "host",
+                                                            "type": "string"
+                                                        },
+                                                        "keep_updated": {
+                                                            "description": "If `true`, TurboCI continuously polls the repository and re-runs\nthe flight scripts whenever new commits are detected.",
+                                                            "title": "keep_updated",
+                                                            "type": "boolean"
+                                                        },
+                                                        "paradigm": {
+                                                            "description": "Git hosting provider. Affects clone URL construction and auth.",
+                                                            "enum": [
+                                                                "gitea",
+                                                                "github",
+                                                                "gitlab"
+                                                            ],
+                                                            "title": "paradigm",
+                                                            "type": "string"
+                                                        },
+                                                        "public_repo": {
+                                                            "description": "If `true`, clones without authentication (no deploy key required).",
+                                                            "title": "public_repo",
+                                                            "type": "boolean"
+                                                        },
+                                                        "repo_url": {
+                                                            "title": "repo_url",
+                                                            "type": "string"
+                                                        },
+                                                        "username": {
+                                                            "title": "username",
+                                                            "type": "string"
+                                                        },
+                                                        "work_dir": {
+                                                            "description": "Absolute path on target servers where the repo is cloned.\nDefaults to `/app`.",
+                                                            "title": "work_dir",
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "repo_url"
+                                                    ],
+                                                    "type": "object"
+                                                },
+                                                {
+                                                    "items": {
+                                                        "description": "Configuration for pulling a git repository onto target servers.",
+                                                        "properties": {
+                                                            "api_key": {
+                                                                "description": "API key or personal access token for private repo access.",
+                                                                "title": "api_key",
+                                                                "type": "string"
+                                                            },
+                                                            "branch": {
+                                                                "title": "branch",
+                                                                "type": "string"
+                                                            },
+                                                            "host": {
+                                                                "description": "Custom git host, used for self-hosted Gitea/Gitlab instances.",
+                                                                "title": "host",
+                                                                "type": "string"
+                                                            },
+                                                            "keep_updated": {
+                                                                "description": "If `true`, TurboCI continuously polls the repository and re-runs\nthe flight scripts whenever new commits are detected.",
+                                                                "title": "keep_updated",
+                                                                "type": "boolean"
+                                                            },
+                                                            "paradigm": {
+                                                                "description": "Git hosting provider. Affects clone URL construction and auth.",
+                                                                "enum": [
+                                                                    "gitea",
+                                                                    "github",
+                                                                    "gitlab"
+                                                                ],
+                                                                "title": "paradigm",
+                                                                "type": "string"
+                                                            },
+                                                            "public_repo": {
+                                                                "description": "If `true`, clones without authentication (no deploy key required).",
+                                                                "title": "public_repo",
+                                                                "type": "boolean"
+                                                            },
+                                                            "repo_url": {
+                                                                "title": "repo_url",
+                                                                "type": "string"
+                                                            },
+                                                            "username": {
+                                                                "title": "username",
+                                                                "type": "string"
+                                                            },
+                                                            "work_dir": {
+                                                                "description": "Absolute path on target servers where the repo is cloned.\nDefaults to `/app`.",
+                                                                "title": "work_dir",
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "repo_url"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "type": "array"
+                                                }
+                                            ],
+                                            "description": "Git repository source(s) to clone/pull onto target servers.",
+                                            "title": "git"
+                                        },
+                                        "healthcheck": {
+                                            "description": "Healthcheck run after the service starts to verify it is live.",
+                                            "properties": {
+                                                "cmd": {
+                                                    "title": "cmd",
+                                                    "type": "string"
+                                                },
+                                                "test": {
+                                                    "title": "test",
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "cmd",
+                                                "test"
+                                            ],
+                                            "title": "healthcheck",
+                                            "type": "object"
+                                        },
+                                        "init": {
+                                            "description": "Shell commands run once on first deploy (not on re-deploys).",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "title": "init",
+                                            "type": "array"
+                                        },
+                                        "instances": {
+                                            "description": "Number of servers to provision per cluster. Defaults to `1`.",
+                                            "title": "instances",
+                                            "type": "number"
+                                        },
+                                        "logs": {
+                                            "description": "Commands or log sources tailed when `turboci control` streams logs\nfor this service.",
+                                            "items": {
+                                                "$ref": "#/definitions/TCIConfigServiceConfigLog"
+                                            },
+                                            "title": "logs",
+                                            "type": "array"
+                                        },
+                                        "os": {
+                                            "description": "OS image slug to use when creating servers for this service.",
+                                            "title": "os",
+                                            "type": "string"
+                                        },
+                                        "run": {
+                                            "description": "Preflight, start, and postflight shell scripts for this service.",
+                                            "properties": {
+                                                "postflight": {
+                                                    "description": "Commands run after the service starts (smoke tests, cache warm-up, etc.).",
+                                                    "properties": {
+                                                        "cmds": {
+                                                            "description": "Inline shell commands executed sequentially.",
+                                                            "items": {
+                                                                "type": "string"
+                                                            },
+                                                            "title": "cmds",
+                                                            "type": "array"
+                                                        },
+                                                        "file": {
+                                                            "description": "Path to a shell script file on the target server to execute instead of `cmds`.",
+                                                            "title": "file",
+                                                            "type": "string"
+                                                        },
+                                                        "work_dir": {
+                                                            "description": "Working directory for the commands or script.",
+                                                            "title": "work_dir",
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "title": "postflight",
+                                                    "type": "object"
+                                                },
+                                                "preflight": {
+                                                    "description": "Commands run before the service starts (install deps, migrations, etc.).",
+                                                    "properties": {
+                                                        "cmds": {
+                                                            "description": "Inline shell commands executed sequentially.",
+                                                            "items": {
+                                                                "type": "string"
+                                                            },
+                                                            "title": "cmds",
+                                                            "type": "array"
+                                                        },
+                                                        "file": {
+                                                            "description": "Path to a shell script file on the target server to execute instead of `cmds`.",
+                                                            "title": "file",
+                                                            "type": "string"
+                                                        },
+                                                        "work_dir": {
+                                                            "description": "Working directory for the commands or script.",
+                                                            "title": "work_dir",
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "title": "preflight",
+                                                    "type": "object"
+                                                },
+                                                "start": {
+                                                    "description": "Commands that start the service process (must be non-blocking or daemonised).",
+                                                    "properties": {
+                                                        "cmds": {
+                                                            "description": "Inline shell commands executed sequentially.",
+                                                            "items": {
+                                                                "type": "string"
+                                                            },
+                                                            "title": "cmds",
+                                                            "type": "array"
+                                                        },
+                                                        "file": {
+                                                            "description": "Path to a shell script file on the target server to execute instead of `cmds`.",
+                                                            "title": "file",
+                                                            "type": "string"
+                                                        },
+                                                        "work_dir": {
+                                                            "description": "Working directory for the commands or script.",
+                                                            "title": "work_dir",
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "title": "start",
+                                                    "type": "object"
+                                                },
+                                                "work_dir": {
+                                                    "description": "Default working directory for all scripts in this run block.",
+                                                    "title": "work_dir",
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "title": "run",
+                                            "type": "object"
+                                        },
+                                        "server_type": {
+                                            "description": "Hardware/instance type slug, e.g. `\"cpx21\"` (Hetzner) or `\"t3.small\"` (AWS).",
+                                            "title": "server_type",
+                                            "type": "string"
+                                        },
+                                        "ssl": {
+                                            "description": "SSL/TLS configuration. Triggers Certbot certificate provisioning.",
+                                            "properties": {
+                                                "email": {
+                                                    "title": "email",
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "email"
+                                            ],
+                                            "title": "ssl",
+                                            "type": "object"
+                                        },
+                                        "target_services": {
+                                            "description": "Target services this load balancer proxies to.\nOnly used when `type` is `\"load_balancer\"`.",
+                                            "items": {
+                                                "description": "A single upstream target for a load balancer service.\nEach target maps to one NGINX `upstream` block and one `server` block.",
+                                                "properties": {
+                                                    "backup": {
+                                                        "description": "If `true`, this target is used as a fallback when all primary servers are down.",
+                                                        "title": "backup",
+                                                        "type": "boolean"
+                                                    },
+                                                    "domains": {
+                                                        "description": "Domains to attach to this target's server block. Triggers TLS termination\nwhen `ssl` is configured on the parent service. Accepts plain strings or\n`TCIConfigServiceDomain` objects.",
+                                                        "items": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "description": "An explicitly named domain, used as an alternative to a plain domain string.",
+                                                                    "properties": {
+                                                                        "domain_name": {
+                                                                            "title": "domain_name",
+                                                                            "type": "string"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "domain_name"
+                                                                    ],
+                                                                    "type": "object"
+                                                                },
+                                                                {
+                                                                    "type": "string"
+                                                                }
+                                                            ]
+                                                        },
+                                                        "title": "domains",
+                                                        "type": "array"
+                                                    },
+                                                    "locations": {
+                                                        "description": "Custom NGINX `location` blocks rendered inside this target's server block.\nThe default `location /` proxy block is auto-generated unless a `\"/\"` path\nis explicitly defined here.",
+                                                        "items": {
+                                                            "description": "A custom NGINX `location` block rendered inside a load balancer server block.\nBy default each location proxies to the upstream; set `proxy: false` for\nlocations that should be handled locally (static files, redirects, etc.).",
+                                                            "properties": {
+                                                                "directives": {
+                                                                    "additionalProperties": {
+                                                                        "anyOf": [
+                                                                            {
+                                                                                "items": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "type": "array"
+                                                                            },
+                                                                            {
+                                                                                "type": "string"
+                                                                            }
+                                                                        ]
+                                                                    },
+                                                                    "description": "Arbitrary NGINX directives added verbatim inside this location block.\nString values emit a single directive; array values emit one line per entry.\n\nExample:\n```yaml\ndirectives:\n  root: /var/www/html\n  add_header:\n    - \"Cache-Control 'public'\"\n    - \"X-Frame-Options DENY\"\n```",
+                                                                    "title": "directives",
+                                                                    "type": "object"
+                                                                },
+                                                                "path": {
+                                                                    "description": "NGINX location path or pattern.\nSupports all NGINX matching prefixes: `\"/\"`, `\"/api/\"`, `\"= /ping\"`,\n`\"~* \\\\.(jpg|png)$\"`, etc.",
+                                                                    "title": "path",
+                                                                    "type": "string"
+                                                                },
+                                                                "proxy": {
+                                                                    "description": "If `false`, the upstream `proxy_pass` block is omitted for this location.\nUse when serving static files, issuing redirects, or returning custom\nresponses. Defaults to `true`.",
+                                                                    "title": "proxy",
+                                                                    "type": "boolean"
+                                                                },
+                                                                "rate_limit": {
+                                                                    "description": "Rate limiting applied to this location.",
+                                                                    "properties": {
+                                                                        "burst": {
+                                                                            "description": "Burst queue size — requests exceeding the rate are queued up to this limit.",
+                                                                            "title": "burst",
+                                                                            "type": "number"
+                                                                        },
+                                                                        "key": {
+                                                                            "description": "NGINX rate limit key. Defaults to `\"$binary_remote_addr\"` (per client IP).\nCan be any NGINX variable, e.g. `\"$http_x_forwarded_for\"`.",
+                                                                            "title": "key",
+                                                                            "type": "string"
+                                                                        },
+                                                                        "nodelay": {
+                                                                            "description": "If `true`, burst requests are served immediately rather than delayed.",
+                                                                            "title": "nodelay",
+                                                                            "type": "boolean"
+                                                                        },
+                                                                        "rate": {
+                                                                            "description": "Request rate, e.g. `\"10r/s\"` or `\"100r/m\"`.",
+                                                                            "title": "rate",
+                                                                            "type": "string"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "rate"
+                                                                    ],
+                                                                    "title": "rate_limit",
+                                                                    "type": "object"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "path"
+                                                            ],
+                                                            "type": "object"
+                                                        },
+                                                        "title": "locations",
+                                                        "type": "array"
+                                                    },
+                                                    "port": {
+                                                        "description": "Port the target service listens on.",
+                                                        "title": "port",
+                                                        "type": "number"
+                                                    },
+                                                    "service_name": {
+                                                        "description": "Name of the service in the same deployment to proxy traffic to.",
+                                                        "title": "service_name",
+                                                        "type": "string"
+                                                    },
+                                                    "weight": {
+                                                        "description": "NGINX upstream weight for weighted round-robin load distribution.",
+                                                        "title": "weight",
+                                                        "type": "number"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "port",
+                                                    "service_name"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            "title": "target_services",
+                                            "type": "array"
+                                        },
+                                        "type": {
+                                            "description": "Deployment strategy. Defaults to `\"default\"` (bare-VM + scripts).",
+                                            "enum": [
+                                                "default",
+                                                "docker",
+                                                "load_balancer"
+                                            ],
+                                            "title": "type",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                },
+                                "description": "Map of service name → service config. Key becomes the service identifier.",
+                                "title": "services",
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "deployment_name",
+                            "provider",
+                            "services"
+                        ],
+                        "type": "object"
+                    },
+                    "title": "deployments",
+                    "type": "array"
+                },
+                "envs": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "envs",
+                    "type": "array"
+                }
+            },
+            "required": [
+                "deployments"
+            ],
+            "type": "object"
+        }
+    ],
+    "definitions": {
+        "TCIConfigServiceConfigLog": {
+            "anyOf": [
+                {
+                    "properties": {
+                        "cmd": {
+                            "title": "cmd",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "cmd"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "type": "string"
+                }
+            ],
+            "description": "A log source entry for a service. Either a plain shell command string or\nan object with an explicit `cmd` key.",
+            "title": "TCIConfigServiceConfigLog"
+        },
+        "{apt?:string[]|undefined;turboci?:string[]|undefined;}": {
+            "properties": {
+                "apt": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "apt",
+                    "type": "array"
+                },
+                "turboci": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "turboci",
+                    "type": "array"
+                }
+            },
+            "title": "{apt?:string[]|undefined;turboci?:string[]|undefined;}",
+            "type": "object"
+        }
+    },
+    "description": "TurboCI deployment configuration file (.turboci/config.yaml)",
+    "$id": "https://raw.githubusercontent.com/Moduletrace/turboci/main/schema/turboci.schema.json",
+    "title": "TurboCI Config"
+}
