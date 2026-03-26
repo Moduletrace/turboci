@@ -123,6 +123,12 @@ export type TCIConfigService = {
  * - `default` — code-sync + run scripts on bare VMs
  * - `docker` — Docker / Compose workflow
  * - `load_balancer` — NGINX reverse proxy, no application code deployed
+ * - `maxscale` — MariaDB MaxScale proxy (read/write split, connection routing)
+ * - `mariadb-galera` — MariaDB Galera multi-master cluster
+ * - `postgres` — PostgreSQL server (standalone or with streaming replication)
+ * - `haproxy` — HAProxy TCP/HTTP proxy (works with any backend: postgres, mysql, mariadb, redis, etc.)
+ * - `mysql` — MySQL server (standalone or with primary/replica replication)
+ * - `proxysql` — ProxySQL connection proxy for MySQL and MariaDB (not PostgreSQL)
  */
 export const TCIServiceTypes = [
     {
@@ -136,6 +142,30 @@ export const TCIServiceTypes = [
     {
         title: "Load Balancer",
         value: "load_balancer",
+    },
+    {
+        title: "MaxScale (MariaDB/MySQL Proxy)",
+        value: "maxscale",
+    },
+    {
+        title: "MariaDB Galera Cluster",
+        value: "mariadb-galera",
+    },
+    {
+        title: "PostgreSQL",
+        value: "postgres",
+    },
+    {
+        title: "HAProxy",
+        value: "haproxy",
+    },
+    {
+        title: "MySQL",
+        value: "mysql",
+    },
+    {
+        title: "ProxySQL (MySQL/MariaDB Proxy)",
+        value: "proxysql",
     },
 ] as const;
 
@@ -244,6 +274,36 @@ export type TCIConfigServiceConfig = {
      */
     target_services?: TCIConfigServiceConfigLBTarget[];
     /**
+     * MaxScale proxy configuration (routers, monitors, admin API).
+     * Only used when `type` is `"maxscale"`.
+     */
+    maxscale?: TCIConfigMaxScaleConfig;
+    /**
+     * HAProxy proxy configuration (frontends, backends, health checks, stats).
+     * Only used when `type` is `"haproxy"`.
+     */
+    haproxy?: TCIConfigHAProxyConfig;
+    /**
+     * ProxySQL proxy configuration (hostgroups, query rules, monitor user).
+     * Only used when `type` is `"proxysql"`.
+     */
+    proxysql?: TCIConfigProxySQLConfig;
+    /**
+     * MariaDB Galera cluster configuration (cluster name, SST method, databases).
+     * Only used when `type` is `"mariadb-galera"`.
+     */
+    mariadb_galera?: TCIConfigMariadbGaleraConfig;
+    /**
+     * PostgreSQL server configuration (port, users, replication).
+     * Only used when `type` is `"postgres"`.
+     */
+    postgres?: TCIConfigPostgresConfig;
+    /**
+     * MySQL server configuration (port, users, replication).
+     * Only used when `type` is `"mysql"`.
+     */
+    mysql?: TCIConfigMysqlConfig;
+    /**
      * Restrict inbound requests to these IPs/CIDRs only. All other IPs are
      * denied. Applies to all server blocks on this load balancer.
      *
@@ -344,6 +404,436 @@ export type TCIConfigServiceDomain = {
 /** SSL configuration. The email is passed to Certbot for Let's Encrypt registration. */
 export type TCIConfigServiceSSL = {
     email: string;
+};
+
+// ---------------------------------------------------------------------------
+// Database service types
+// ---------------------------------------------------------------------------
+
+/**
+ * A database and optional user to create during service initialisation.
+ * Used by `mariadb-galera`, `postgres`, and `mysql` service types.
+ */
+export type TCIConfigDatabaseSpec = {
+    /** Database name to create. */
+    name: string;
+    /** Database user to create and grant privileges to this database. */
+    user?: string;
+    /** Password for the database user. */
+    password?: string;
+    /** Character set (e.g. `"utf8mb4"`). Only applies to MySQL/MariaDB. */
+    charset?: string;
+    /** Collation (e.g. `"utf8mb4_unicode_ci"`). Only applies to MySQL/MariaDB. */
+    collation?: string;
+};
+
+// ---------------------------------------------------------------------------
+// MaxScale
+// ---------------------------------------------------------------------------
+
+/**
+ * A single backend server entry for a MaxScale proxy service.
+ * Points to a `mariadb-galera` or `mysql` service in the same deployment.
+ */
+export type TCIConfigMaxScaleTarget = {
+    /** Name of the service in the same deployment to route DB traffic to. */
+    service_name: string;
+    /** MySQL-protocol port the target service listens on (typically `3306`). */
+    port: number;
+    /** Relative weight for connection distribution. Higher values receive more connections. */
+    weight?: number;
+    /** If `true`, this target is used only when all non-backup servers are unavailable. */
+    backup?: boolean;
+};
+
+/**
+ * MaxScale proxy configuration.
+ * MaxScale supports MySQL 5.5+ and all MariaDB versions including Galera clusters.
+ * It does **not** support PostgreSQL.
+ *
+ * Only used when `type` is `"maxscale"`.
+ */
+export type TCIConfigMaxScaleConfig = {
+    /**
+     * Backend services MaxScale will route connections to.
+     * Typically points to a `mariadb-galera` or `mysql` service.
+     */
+    target_services?: TCIConfigMaxScaleTarget[];
+    /**
+     * MySQL-protocol port MaxScale listens on for client connections.
+     * Defaults to `3306`.
+     */
+    listen_port?: number;
+    /**
+     * MaxScale router module.
+     * - `readwritesplit` — routes writes to primary, distributes reads across replicas (default)
+     * - `readconnroute` — simple round-robin connection routing
+     * - `schemarouter` — routes by schema name (sharding)
+     */
+    router?: "readwritesplit" | "readconnroute" | "schemarouter";
+    /**
+     * MaxScale monitor module.
+     * - `galeramon` — for MariaDB Galera clusters (detects primary/donor/joiner state)
+     * - `mariadbmon` — for MariaDB/MySQL primary-replica setups
+     * - `mysqlmon` — legacy monitor for older MySQL setups
+     */
+    monitor?: "galeramon" | "mariadbmon" | "mysqlmon";
+    /** Port for the MaxScale REST API and GUI. Defaults to `8989`. */
+    admin_port?: number;
+    /** MaxScale admin REST API username. Defaults to `"admin"`. */
+    admin_user?: string;
+    /** MaxScale admin REST API password. */
+    admin_password?: string;
+    /**
+     * Database user MaxScale uses for monitoring and service authentication.
+     * This user must have `REPLICATION CLIENT`, `SHOW DATABASES`, and `SELECT` privileges.
+     */
+    user?: string;
+    /** Password for the MaxScale database user. */
+    password?: string;
+};
+
+// ---------------------------------------------------------------------------
+// HAProxy
+// ---------------------------------------------------------------------------
+
+/**
+ * Health check configuration for an HAProxy backend server.
+ * HAProxy supports protocol-aware checks for common databases.
+ */
+export type TCIConfigHAProxyCheck = {
+    /**
+     * Health check protocol.
+     * - `tcp` — basic TCP connection check (works for any service)
+     * - `http` — HTTP request check
+     * - `mysql` — MySQL/MariaDB protocol handshake check
+     * - `pgsql` — PostgreSQL startup message check
+     * - `redis` — Redis PING check
+     */
+    type?: "tcp" | "http" | "mysql" | "pgsql" | "redis";
+    /**
+     * Time between health checks (e.g. `"2s"`, `"500ms"`).
+     * Defaults to `"2s"`.
+     */
+    interval?: string;
+    /** Number of consecutive successes required to mark a server UP. Defaults to `2`. */
+    rise?: number;
+    /** Number of consecutive failures required to mark a server DOWN. Defaults to `3`. */
+    fall?: number;
+};
+
+/**
+ * A single backend server entry for an HAProxy service.
+ * HAProxy is a generic TCP/HTTP proxy and can route to any service type.
+ */
+export type TCIConfigHAProxyTarget = {
+    /** Name of the service in the same deployment to proxy traffic to. */
+    service_name: string;
+    /** Port the target service listens on. */
+    port: number;
+    /** Relative weight for load distribution. */
+    weight?: number;
+    /** If `true`, this server is only used when all non-backup servers are down. */
+    backup?: boolean;
+    /** Health check settings for this backend server. */
+    check?: TCIConfigHAProxyCheck;
+};
+
+/**
+ * HAProxy proxy configuration.
+ * HAProxy is a generic TCP/HTTP proxy. Unlike MaxScale or ProxySQL, it works
+ * across database types — PostgreSQL, MySQL, MariaDB, Redis, MongoDB, and any
+ * other TCP service. It does not parse or modify the database protocol.
+ *
+ * Only used when `type` is `"haproxy"`.
+ */
+export type TCIConfigHAProxyConfig = {
+    /**
+     * Backend services HAProxy will proxy traffic to.
+     * Accepts any service type (postgres, mysql, mariadb-galera, etc.).
+     */
+    target_services?: TCIConfigHAProxyTarget[];
+    /**
+     * Port HAProxy's frontend listens on for client connections.
+     * Defaults to `5432` for postgres mode, `3306` for mysql mode.
+     */
+    listen_port?: number;
+    /**
+     * Proxy mode.
+     * - `tcp` — layer-4 pass-through, required for databases (default)
+     * - `http` — layer-7 HTTP proxy with header inspection
+     */
+    mode?: "tcp" | "http";
+    /**
+     * Load balancing algorithm.
+     * - `roundrobin` — each server in turn (default)
+     * - `leastconn` — server with fewest active connections (best for databases)
+     * - `first` — first available server (useful for active/passive failover)
+     * - `source` — sticky sessions based on client IP
+     */
+    balance?: "roundrobin" | "leastconn" | "first" | "source";
+    /** Port for the HAProxy statistics web page. Defaults to `8404`. */
+    stats_port?: number;
+    /** Username for the HAProxy statistics page. */
+    stats_user?: string;
+    /** Password for the HAProxy statistics page. */
+    stats_password?: string;
+    /** TCP connection timeout (e.g. `"5s"`). Defaults to `"5s"`. */
+    timeout_connect?: string;
+    /** Client inactivity timeout (e.g. `"30s"`). Defaults to `"30s"`. */
+    timeout_client?: string;
+    /** Server response timeout (e.g. `"30s"`). Defaults to `"30s"`. */
+    timeout_server?: string;
+};
+
+// ---------------------------------------------------------------------------
+// MariaDB Galera
+// ---------------------------------------------------------------------------
+
+/**
+ * MariaDB Galera cluster configuration.
+ * Galera provides synchronous multi-primary replication. A minimum of 3 nodes
+ * is required for quorum. Pair with a `maxscale` or `haproxy` service for
+ * client-facing load balancing and read/write splitting.
+ *
+ * Only used when `type` is `"mariadb-galera"`.
+ */
+export type TCIConfigMariadbGaleraConfig = {
+    /**
+     * `wsrep_cluster_name` — shared identifier all Galera nodes must agree on.
+     * Defaults to `"turboci_galera_cluster"`.
+     */
+    cluster_name?: string;
+    /**
+     * State Snapshot Transfer method used when a new node joins the cluster.
+     * - `mariabackup` — hot backup via MariaDB Backup (recommended, no locks)
+     * - `rsync` — rsync-based full copy (simple, blocks writes during transfer)
+     * - `xtrabackup-v2` — Percona XtraBackup (for MySQL-based setups)
+     */
+    sst_method?: "mariabackup" | "rsync" | "xtrabackup-v2";
+    /** MariaDB root user password. */
+    root_password?: string;
+    /** MySQL-protocol port the cluster nodes listen on. Defaults to `3306`. */
+    port?: number;
+    /** Databases and users to create after cluster bootstrap. */
+    databases?: TCIConfigDatabaseSpec[];
+    /**
+     * Address to bind the MySQL listener to.
+     * Use `"0.0.0.0"` to accept connections from all interfaces (required for
+     * MaxScale or HAProxy to reach private cluster IPs). Defaults to `"0.0.0.0"`.
+     */
+    bind_address?: string;
+};
+
+// ---------------------------------------------------------------------------
+// PostgreSQL
+// ---------------------------------------------------------------------------
+
+/**
+ * Streaming replication configuration for PostgreSQL.
+ * When enabled, non-primary instances are configured as hot standbys.
+ */
+export type TCIConfigPostgresReplication = {
+    /** Enable streaming replication. Defaults to `false`. */
+    enabled?: boolean;
+    /** Replication user created on the primary. Defaults to `"replicator"`. */
+    user?: string;
+    /** Password for the replication user. */
+    password?: string;
+    /**
+     * Maximum number of concurrent WAL sender processes.
+     * Should be ≥ the number of replica instances. Defaults to `5`.
+     */
+    max_wal_senders?: number;
+};
+
+/**
+ * PostgreSQL server configuration.
+ * Pair with a `haproxy` service for client-side load balancing; HAProxy supports
+ * a native `pgsql` health check. ProxySQL and MaxScale do **not** support PostgreSQL.
+ *
+ * Only used when `type` is `"postgres"`.
+ */
+export type TCIConfigPostgresConfig = {
+    /** Port PostgreSQL listens on. Defaults to `5432`. */
+    port?: number;
+    /** Password for the `postgres` superuser. */
+    root_password?: string;
+    /** Databases and users to create after initialisation. */
+    databases?: TCIConfigDatabaseSpec[];
+    /**
+     * Maximum number of client connections. Defaults to `100`.
+     * Increase when using a connection pooler like PgBouncer or HAProxy.
+     */
+    max_connections?: number;
+    /**
+     * Shared memory buffer size (e.g. `"256MB"`, `"1GB"`).
+     * Rule of thumb: set to 25% of available RAM. Defaults to `"128MB"`.
+     */
+    shared_buffers?: string;
+    /**
+     * Interfaces PostgreSQL listens on.
+     * Use `"*"` to accept connections from all interfaces (required for HAProxy
+     * to reach private server IPs). Defaults to `"localhost"`.
+     */
+    listen_addresses?: string;
+    /** Streaming replication configuration. */
+    replication?: TCIConfigPostgresReplication;
+};
+
+// ---------------------------------------------------------------------------
+// MySQL
+// ---------------------------------------------------------------------------
+
+/**
+ * MySQL replication configuration.
+ * When enabled, non-primary instances are set up as asynchronous replicas.
+ */
+export type TCIConfigMysqlReplication = {
+    /** Enable MySQL binary-log replication. Defaults to `false`. */
+    enabled?: boolean;
+    /** Replication user created on the primary. Defaults to `"replicator"`. */
+    user?: string;
+    /** Password for the replication user. */
+    password?: string;
+    /**
+     * Unique numeric server identifier required for replication.
+     * Must be distinct across all nodes. The primary is typically `1`;
+     * replicas auto-assign from `2` upward if not specified.
+     */
+    server_id?: number;
+};
+
+/**
+ * MySQL server configuration.
+ * Pair with a `proxysql` service for query routing and read/write splitting,
+ * or with `haproxy` for simple TCP load balancing. MaxScale also supports MySQL 5.5+.
+ *
+ * Only used when `type` is `"mysql"`.
+ */
+export type TCIConfigMysqlConfig = {
+    /** MySQL port. Defaults to `3306`. */
+    port?: number;
+    /** MySQL root user password. */
+    root_password?: string;
+    /** Databases and users to create after initialisation. */
+    databases?: TCIConfigDatabaseSpec[];
+    /**
+     * Address MySQL binds to.
+     * Use `"0.0.0.0"` to accept connections from all interfaces (required for
+     * ProxySQL or HAProxy to reach private server IPs). Defaults to `"0.0.0.0"`.
+     */
+    bind_address?: string;
+    /** Maximum number of simultaneous client connections. Defaults to `151`. */
+    max_connections?: number;
+    /** Replication configuration. */
+    replication?: TCIConfigMysqlReplication;
+};
+
+// ---------------------------------------------------------------------------
+// ProxySQL
+// ---------------------------------------------------------------------------
+
+/**
+ * A query routing rule for ProxySQL.
+ * Rules are evaluated in ascending `rule_id` order; the first matching rule wins.
+ */
+export type TCIConfigProxySQLQueryRule = {
+    /**
+     * Numeric rule identifier. Lower numbers are evaluated first.
+     * Defaults to insertion order if omitted.
+     */
+    rule_id?: number;
+    /**
+     * Regular expression matched against the normalised query digest.
+     * Example: `"^SELECT"` matches all SELECT statements.
+     */
+    match_digest?: string;
+    /** Hostgroup to send matching queries to. */
+    destination_hostgroup?: number;
+    /**
+     * If `true`, stop evaluating further rules once this rule matches.
+     * Defaults to `true`.
+     */
+    apply?: boolean;
+    /** Human-readable annotation stored in the ProxySQL rule table. */
+    comment?: string;
+};
+
+/**
+ * A single backend server entry for a ProxySQL service.
+ * Maps to one `mysql_servers` row in the ProxySQL admin database.
+ */
+export type TCIConfigProxySQLTarget = {
+    /** Name of the service in the same deployment to route traffic to. */
+    service_name: string;
+    /** MySQL-protocol port the target service listens on (typically `3306`). */
+    port: number;
+    /** Relative connection weight within the hostgroup. */
+    weight?: number;
+    /** If `true`, this server is placed in the OFFLINE_SOFT state initially. */
+    backup?: boolean;
+    /**
+     * ProxySQL hostgroup ID. Use separate hostgroups for writers and readers
+     * (e.g. writers: `10`, readers: `20`) to enable read/write splitting via query rules.
+     * Defaults to `0`.
+     */
+    hostgroup?: number;
+    /** Maximum number of connections ProxySQL will open to this backend server. */
+    max_connections?: number;
+};
+
+/**
+ * ProxySQL connection proxy configuration.
+ * ProxySQL supports MySQL 5.5+ and MariaDB 5.5+ for query routing, read/write
+ * splitting, connection multiplexing, and query caching.
+ * It does **not** support PostgreSQL — use HAProxy for PostgreSQL proxying.
+ *
+ * Only used when `type` is `"proxysql"`.
+ */
+export type TCIConfigProxySQLConfig = {
+    /**
+     * Backend services ProxySQL will route connections to.
+     * Typically points to a `mysql` service. Use different `hostgroup` values
+     * on target entries to separate writer and reader pools.
+     */
+    target_services?: TCIConfigProxySQLTarget[];
+    /**
+     * MySQL-protocol port clients connect to on ProxySQL.
+     * Defaults to `6033`.
+     */
+    listen_port?: number;
+    /**
+     * ProxySQL admin interface port (MySQL protocol, admin credentials required).
+     * Defaults to `6032`.
+     */
+    admin_port?: number;
+    /** ProxySQL admin username. Defaults to `"admin"`. */
+    admin_user?: string;
+    /** ProxySQL admin password. */
+    admin_password?: string;
+    /**
+     * MySQL user ProxySQL uses to monitor backend health via `SELECT 1` queries.
+     * This user needs `USAGE` privilege on the backend servers.
+     */
+    monitor_user?: string;
+    /** Password for the ProxySQL monitor user. */
+    monitor_password?: string;
+    /**
+     * Hostgroup ID for write traffic (INSERT, UPDATE, DELETE, DDL).
+     * Defaults to `10`.
+     */
+    writer_hostgroup?: number;
+    /**
+     * Hostgroup ID for read traffic (SELECT).
+     * Defaults to `20`.
+     */
+    reader_hostgroup?: number;
+    /**
+     * Query routing rules evaluated against incoming query digests.
+     * Rules are applied in ascending `rule_id` order.
+     */
+    query_rules?: TCIConfigProxySQLQueryRule[];
 };
 
 /** Rate limiting configuration for a single NGINX location block. */

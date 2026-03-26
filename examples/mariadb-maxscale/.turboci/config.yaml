@@ -1,0 +1,92 @@
+# yaml-language-server: $schema=../../../../schema/turboci.schema.json
+
+deployments:
+    - deployment_name: mariadb_galera_maxscale
+      provider: hetzner
+      location: ash
+      description: >
+          MariaDB Galera multi-primary cluster (3 nodes) fronted by MaxScale.
+          MaxScale uses galeramon to monitor the cluster health and
+          readwritesplit to route writes to the elected primary while
+          distributing reads across the remaining nodes.
+
+          MaxScale supports MariaDB (all versions), MariaDB Galera, and
+          MySQL 5.5+. It does NOT support PostgreSQL.
+      services:
+          db:
+              type: mariadb-galera
+              instances: 3
+              clusters: 1
+              server_type: cpx21
+              mariadb_galera:
+                  cluster_name: turboci_galera
+                  sst_method: mariabackup
+                  root_password: "${DB_ROOT_PASSWORD}"
+                  port: 3306
+                  bind_address: "0.0.0.0"
+                  databases:
+                      - name: myapp
+                        user: myapp_user
+                        password: "${DB_APP_PASSWORD}"
+                        charset: utf8mb4
+                        collation: utf8mb4_unicode_ci
+              run:
+                  preflight:
+                      cmds:
+                          - apt-get update -qq
+                          - apt-get install -y mariadb-server mariadb-backup galera-4
+                          - systemctl stop mariadb || true
+                          # Write my.cnf with Galera settings — substitute IPs at runtime
+                          - chmod +x /app/scripts/configure-galera.sh && /app/scripts/configure-galera.sh
+                  start:
+                      cmds:
+                          # First node: bootstrap the cluster
+                          # Subsequent nodes: join the existing cluster
+                          - /app/scripts/start-galera.sh
+              healthcheck:
+                  cmd: >
+                      mysql -u root -p"${DB_ROOT_PASSWORD}" -e
+                      "SHOW STATUS LIKE 'wsrep_cluster_size';" | grep wsrep_cluster_size
+                  test: "3"
+              logs:
+                  - journalctl -fu mariadb
+
+          maxscale:
+              type: maxscale
+              instances: 1
+              clusters: 1
+              server_type: cpx11
+              maxscale:
+                  target_services:
+                      - service_name: db
+                        port: 3306
+                  listen_port: 3306
+                  router: readwritesplit
+                  monitor: galeramon
+                  admin_port: 8989
+                  admin_user: admin
+                  admin_password: "${MAXSCALE_ADMIN_PASSWORD}"
+                  user: maxscale_monitor
+                  password: "${MAXSCALE_MONITOR_PASSWORD}"
+              run:
+                  preflight:
+                      cmds:
+                          - apt-get update -qq
+                          - apt-get install -y maxscale
+                          # Render maxscale.cnf from template (substitutes backend IPs)
+                          - chmod +x /app/scripts/configure-maxscale.sh && /app/scripts/configure-maxscale.sh
+                  start:
+                      cmds:
+                          - systemctl enable maxscale
+                          - systemctl start maxscale
+              healthcheck:
+                  cmd: maxctrl list servers
+                  test: "Master"
+              logs:
+                  - journalctl -fu maxscale
+
+      env:
+          DB_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
+          DB_APP_PASSWORD: "${DB_APP_PASSWORD}"
+          MAXSCALE_ADMIN_PASSWORD: "${MAXSCALE_ADMIN_PASSWORD}"
+          MAXSCALE_MONITOR_PASSWORD: "${MAXSCALE_MONITOR_PASSWORD}"

@@ -87,7 +87,11 @@ export default function () {
                 );
 
                 const load_balancers = services.filter(
-                    (s) => s.type == "load_balancer",
+                    (s) =>
+                        s.type === "load_balancer" ||
+                        s.type === "maxscale" ||
+                        s.type === "haproxy" ||
+                        s.type === "proxysql",
                 );
 
                 deployments_and_services_to_update[i] = {
@@ -131,11 +135,18 @@ export default function () {
 
                     const nextService = services[s + 1];
                     const isNextServiceLoadBalancer =
-                        nextService && nextService.type == "load_balancer";
+                        nextService &&
+                        (nextService.type === "load_balancer" ||
+                            nextService.type === "maxscale" ||
+                            nextService.type === "haproxy" ||
+                            nextService.type === "proxysql");
 
                     if (
                         load_balancers?.[0] &&
                         service.type !== "load_balancer" &&
+                        service.type !== "maxscale" &&
+                        service.type !== "haproxy" &&
+                        service.type !== "proxysql" &&
                         !isNextServiceLoadBalancer &&
                         global.UPDATE_LOAD_BALANCERS
                         // &&
@@ -144,15 +155,23 @@ export default function () {
                         // ]
                     ) {
                         const isServiceAttachedToALoadBalancer =
-                            load_balancers.find((lb) =>
-                                Boolean(
-                                    lb.target_services?.find(
+                            load_balancers.find((lb) => {
+                                const targets =
+                                    lb.type === "maxscale"
+                                        ? lb.maxscale?.target_services
+                                        : lb.type === "haproxy"
+                                          ? lb.haproxy?.target_services
+                                          : lb.type === "proxysql"
+                                            ? lb.proxysql?.target_services
+                                            : lb.target_services;
+                                return Boolean(
+                                    targets?.find(
                                         (trgSrv) =>
-                                            trgSrv.service_name ==
+                                            trgSrv.service_name ===
                                             service.service_name,
                                     ),
-                                ),
-                            );
+                                );
+                            });
 
                         if (!isServiceAttachedToALoadBalancer) {
                             global.UPDATE_LOAD_BALANCERS = false;

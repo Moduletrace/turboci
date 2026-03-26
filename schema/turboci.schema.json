@@ -306,6 +306,137 @@
                                     "description": "Git repository source(s) to clone/pull onto target servers.",
                                     "title": "git"
                                 },
+                                "haproxy": {
+                                    "description": "HAProxy proxy configuration (frontends, backends, health checks, stats).\nOnly used when `type` is `\"haproxy\"`.",
+                                    "properties": {
+                                        "balance": {
+                                            "description": "Load balancing algorithm.\n- `roundrobin` — each server in turn (default)\n- `leastconn` — server with fewest active connections (best for databases)\n- `first` — first available server (useful for active/passive failover)\n- `source` — sticky sessions based on client IP",
+                                            "enum": [
+                                                "first",
+                                                "leastconn",
+                                                "roundrobin",
+                                                "source"
+                                            ],
+                                            "title": "balance",
+                                            "type": "string"
+                                        },
+                                        "listen_port": {
+                                            "description": "Port HAProxy's frontend listens on for client connections.\nDefaults to `5432` for postgres mode, `3306` for mysql mode.",
+                                            "title": "listen_port",
+                                            "type": "number"
+                                        },
+                                        "mode": {
+                                            "description": "Proxy mode.\n- `tcp` — layer-4 pass-through, required for databases (default)\n- `http` — layer-7 HTTP proxy with header inspection",
+                                            "enum": [
+                                                "http",
+                                                "tcp"
+                                            ],
+                                            "title": "mode",
+                                            "type": "string"
+                                        },
+                                        "stats_password": {
+                                            "description": "Password for the HAProxy statistics page.",
+                                            "title": "stats_password",
+                                            "type": "string"
+                                        },
+                                        "stats_port": {
+                                            "description": "Port for the HAProxy statistics web page. Defaults to `8404`.",
+                                            "title": "stats_port",
+                                            "type": "number"
+                                        },
+                                        "stats_user": {
+                                            "description": "Username for the HAProxy statistics page.",
+                                            "title": "stats_user",
+                                            "type": "string"
+                                        },
+                                        "target_services": {
+                                            "description": "Backend services HAProxy will proxy traffic to.\nAccepts any service type (postgres, mysql, mariadb-galera, etc.).",
+                                            "items": {
+                                                "description": "A single backend server entry for an HAProxy service.\nHAProxy is a generic TCP/HTTP proxy and can route to any service type.",
+                                                "properties": {
+                                                    "backup": {
+                                                        "description": "If `true`, this server is only used when all non-backup servers are down.",
+                                                        "title": "backup",
+                                                        "type": "boolean"
+                                                    },
+                                                    "check": {
+                                                        "description": "Health check settings for this backend server.",
+                                                        "properties": {
+                                                            "fall": {
+                                                                "description": "Number of consecutive failures required to mark a server DOWN. Defaults to `3`.",
+                                                                "title": "fall",
+                                                                "type": "number"
+                                                            },
+                                                            "interval": {
+                                                                "description": "Time between health checks (e.g. `\"2s\"`, `\"500ms\"`).\nDefaults to `\"2s\"`.",
+                                                                "title": "interval",
+                                                                "type": "string"
+                                                            },
+                                                            "rise": {
+                                                                "description": "Number of consecutive successes required to mark a server UP. Defaults to `2`.",
+                                                                "title": "rise",
+                                                                "type": "number"
+                                                            },
+                                                            "type": {
+                                                                "description": "Health check protocol.\n- `tcp` — basic TCP connection check (works for any service)\n- `http` — HTTP request check\n- `mysql` — MySQL/MariaDB protocol handshake check\n- `pgsql` — PostgreSQL startup message check\n- `redis` — Redis PING check",
+                                                                "enum": [
+                                                                    "http",
+                                                                    "mysql",
+                                                                    "pgsql",
+                                                                    "redis",
+                                                                    "tcp"
+                                                                ],
+                                                                "title": "type",
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "title": "check",
+                                                        "type": "object"
+                                                    },
+                                                    "port": {
+                                                        "description": "Port the target service listens on.",
+                                                        "title": "port",
+                                                        "type": "number"
+                                                    },
+                                                    "service_name": {
+                                                        "description": "Name of the service in the same deployment to proxy traffic to.",
+                                                        "title": "service_name",
+                                                        "type": "string"
+                                                    },
+                                                    "weight": {
+                                                        "description": "Relative weight for load distribution.",
+                                                        "title": "weight",
+                                                        "type": "number"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "port",
+                                                    "service_name"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            "title": "target_services",
+                                            "type": "array"
+                                        },
+                                        "timeout_client": {
+                                            "description": "Client inactivity timeout (e.g. `\"30s\"`). Defaults to `\"30s\"`.",
+                                            "title": "timeout_client",
+                                            "type": "string"
+                                        },
+                                        "timeout_connect": {
+                                            "description": "TCP connection timeout (e.g. `\"5s\"`). Defaults to `\"5s\"`.",
+                                            "title": "timeout_connect",
+                                            "type": "string"
+                                        },
+                                        "timeout_server": {
+                                            "description": "Server response timeout (e.g. `\"30s\"`). Defaults to `\"30s\"`.",
+                                            "title": "timeout_server",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "title": "haproxy",
+                                    "type": "object"
+                                },
                                 "healthcheck": {
                                     "description": "Healthcheck run after the service starts to verify it is live.",
                                     "properties": {
@@ -346,10 +477,497 @@
                                     "title": "logs",
                                     "type": "array"
                                 },
+                                "mariadb_galera": {
+                                    "description": "MariaDB Galera cluster configuration (cluster name, SST method, databases).\nOnly used when `type` is `\"mariadb-galera\"`.",
+                                    "properties": {
+                                        "bind_address": {
+                                            "description": "Address to bind the MySQL listener to.\nUse `\"0.0.0.0\"` to accept connections from all interfaces (required for\nMaxScale or HAProxy to reach private cluster IPs). Defaults to `\"0.0.0.0\"`.",
+                                            "title": "bind_address",
+                                            "type": "string"
+                                        },
+                                        "cluster_name": {
+                                            "description": "`wsrep_cluster_name` — shared identifier all Galera nodes must agree on.\nDefaults to `\"turboci_galera_cluster\"`.",
+                                            "title": "cluster_name",
+                                            "type": "string"
+                                        },
+                                        "databases": {
+                                            "description": "Databases and users to create after cluster bootstrap.",
+                                            "items": {
+                                                "description": "A database and optional user to create during service initialisation.\nUsed by `mariadb-galera`, `postgres`, and `mysql` service types.",
+                                                "properties": {
+                                                    "charset": {
+                                                        "description": "Character set (e.g. `\"utf8mb4\"`). Only applies to MySQL/MariaDB.",
+                                                        "title": "charset",
+                                                        "type": "string"
+                                                    },
+                                                    "collation": {
+                                                        "description": "Collation (e.g. `\"utf8mb4_unicode_ci\"`). Only applies to MySQL/MariaDB.",
+                                                        "title": "collation",
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "description": "Database name to create.",
+                                                        "title": "name",
+                                                        "type": "string"
+                                                    },
+                                                    "password": {
+                                                        "description": "Password for the database user.",
+                                                        "title": "password",
+                                                        "type": "string"
+                                                    },
+                                                    "user": {
+                                                        "description": "Database user to create and grant privileges to this database.",
+                                                        "title": "user",
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "name"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            "title": "databases",
+                                            "type": "array"
+                                        },
+                                        "port": {
+                                            "description": "MySQL-protocol port the cluster nodes listen on. Defaults to `3306`.",
+                                            "title": "port",
+                                            "type": "number"
+                                        },
+                                        "root_password": {
+                                            "description": "MariaDB root user password.",
+                                            "title": "root_password",
+                                            "type": "string"
+                                        },
+                                        "sst_method": {
+                                            "description": "State Snapshot Transfer method used when a new node joins the cluster.\n- `mariabackup` — hot backup via MariaDB Backup (recommended, no locks)\n- `rsync` — rsync-based full copy (simple, blocks writes during transfer)\n- `xtrabackup-v2` — Percona XtraBackup (for MySQL-based setups)",
+                                            "enum": [
+                                                "mariabackup",
+                                                "rsync",
+                                                "xtrabackup-v2"
+                                            ],
+                                            "title": "sst_method",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "title": "mariadb_galera",
+                                    "type": "object"
+                                },
+                                "maxscale": {
+                                    "description": "MaxScale proxy configuration (routers, monitors, admin API).\nOnly used when `type` is `\"maxscale\"`.",
+                                    "properties": {
+                                        "admin_password": {
+                                            "description": "MaxScale admin REST API password.",
+                                            "title": "admin_password",
+                                            "type": "string"
+                                        },
+                                        "admin_port": {
+                                            "description": "Port for the MaxScale REST API and GUI. Defaults to `8989`.",
+                                            "title": "admin_port",
+                                            "type": "number"
+                                        },
+                                        "admin_user": {
+                                            "description": "MaxScale admin REST API username. Defaults to `\"admin\"`.",
+                                            "title": "admin_user",
+                                            "type": "string"
+                                        },
+                                        "listen_port": {
+                                            "description": "MySQL-protocol port MaxScale listens on for client connections.\nDefaults to `3306`.",
+                                            "title": "listen_port",
+                                            "type": "number"
+                                        },
+                                        "monitor": {
+                                            "description": "MaxScale monitor module.\n- `galeramon` — for MariaDB Galera clusters (detects primary/donor/joiner state)\n- `mariadbmon` — for MariaDB/MySQL primary-replica setups\n- `mysqlmon` — legacy monitor for older MySQL setups",
+                                            "enum": [
+                                                "galeramon",
+                                                "mariadbmon",
+                                                "mysqlmon"
+                                            ],
+                                            "title": "monitor",
+                                            "type": "string"
+                                        },
+                                        "password": {
+                                            "description": "Password for the MaxScale database user.",
+                                            "title": "password",
+                                            "type": "string"
+                                        },
+                                        "router": {
+                                            "description": "MaxScale router module.\n- `readwritesplit` — routes writes to primary, distributes reads across replicas (default)\n- `readconnroute` — simple round-robin connection routing\n- `schemarouter` — routes by schema name (sharding)",
+                                            "enum": [
+                                                "readconnroute",
+                                                "readwritesplit",
+                                                "schemarouter"
+                                            ],
+                                            "title": "router",
+                                            "type": "string"
+                                        },
+                                        "target_services": {
+                                            "description": "Backend services MaxScale will route connections to.\nTypically points to a `mariadb-galera` or `mysql` service.",
+                                            "items": {
+                                                "description": "A single backend server entry for a MaxScale proxy service.\nPoints to a `mariadb-galera` or `mysql` service in the same deployment.",
+                                                "properties": {
+                                                    "backup": {
+                                                        "description": "If `true`, this target is used only when all non-backup servers are unavailable.",
+                                                        "title": "backup",
+                                                        "type": "boolean"
+                                                    },
+                                                    "port": {
+                                                        "description": "MySQL-protocol port the target service listens on (typically `3306`).",
+                                                        "title": "port",
+                                                        "type": "number"
+                                                    },
+                                                    "service_name": {
+                                                        "description": "Name of the service in the same deployment to route DB traffic to.",
+                                                        "title": "service_name",
+                                                        "type": "string"
+                                                    },
+                                                    "weight": {
+                                                        "description": "Relative weight for connection distribution. Higher values receive more connections.",
+                                                        "title": "weight",
+                                                        "type": "number"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "port",
+                                                    "service_name"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            "title": "target_services",
+                                            "type": "array"
+                                        },
+                                        "user": {
+                                            "description": "Database user MaxScale uses for monitoring and service authentication.\nThis user must have `REPLICATION CLIENT`, `SHOW DATABASES`, and `SELECT` privileges.",
+                                            "title": "user",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "title": "maxscale",
+                                    "type": "object"
+                                },
+                                "mysql": {
+                                    "description": "MySQL server configuration (port, users, replication).\nOnly used when `type` is `\"mysql\"`.",
+                                    "properties": {
+                                        "bind_address": {
+                                            "description": "Address MySQL binds to.\nUse `\"0.0.0.0\"` to accept connections from all interfaces (required for\nProxySQL or HAProxy to reach private server IPs). Defaults to `\"0.0.0.0\"`.",
+                                            "title": "bind_address",
+                                            "type": "string"
+                                        },
+                                        "databases": {
+                                            "description": "Databases and users to create after initialisation.",
+                                            "items": {
+                                                "description": "A database and optional user to create during service initialisation.\nUsed by `mariadb-galera`, `postgres`, and `mysql` service types.",
+                                                "properties": {
+                                                    "charset": {
+                                                        "description": "Character set (e.g. `\"utf8mb4\"`). Only applies to MySQL/MariaDB.",
+                                                        "title": "charset",
+                                                        "type": "string"
+                                                    },
+                                                    "collation": {
+                                                        "description": "Collation (e.g. `\"utf8mb4_unicode_ci\"`). Only applies to MySQL/MariaDB.",
+                                                        "title": "collation",
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "description": "Database name to create.",
+                                                        "title": "name",
+                                                        "type": "string"
+                                                    },
+                                                    "password": {
+                                                        "description": "Password for the database user.",
+                                                        "title": "password",
+                                                        "type": "string"
+                                                    },
+                                                    "user": {
+                                                        "description": "Database user to create and grant privileges to this database.",
+                                                        "title": "user",
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "name"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            "title": "databases",
+                                            "type": "array"
+                                        },
+                                        "max_connections": {
+                                            "description": "Maximum number of simultaneous client connections. Defaults to `151`.",
+                                            "title": "max_connections",
+                                            "type": "number"
+                                        },
+                                        "port": {
+                                            "description": "MySQL port. Defaults to `3306`.",
+                                            "title": "port",
+                                            "type": "number"
+                                        },
+                                        "replication": {
+                                            "description": "Replication configuration.",
+                                            "properties": {
+                                                "enabled": {
+                                                    "description": "Enable MySQL binary-log replication. Defaults to `false`.",
+                                                    "title": "enabled",
+                                                    "type": "boolean"
+                                                },
+                                                "password": {
+                                                    "description": "Password for the replication user.",
+                                                    "title": "password",
+                                                    "type": "string"
+                                                },
+                                                "server_id": {
+                                                    "description": "Unique numeric server identifier required for replication.\nMust be distinct across all nodes. The primary is typically `1`;\nreplicas auto-assign from `2` upward if not specified.",
+                                                    "title": "server_id",
+                                                    "type": "number"
+                                                },
+                                                "user": {
+                                                    "description": "Replication user created on the primary. Defaults to `\"replicator\"`.",
+                                                    "title": "user",
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "title": "replication",
+                                            "type": "object"
+                                        },
+                                        "root_password": {
+                                            "description": "MySQL root user password.",
+                                            "title": "root_password",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "title": "mysql",
+                                    "type": "object"
+                                },
                                 "os": {
                                     "description": "OS image slug to use when creating servers for this service.",
                                     "title": "os",
                                     "type": "string"
+                                },
+                                "postgres": {
+                                    "description": "PostgreSQL server configuration (port, users, replication).\nOnly used when `type` is `\"postgres\"`.",
+                                    "properties": {
+                                        "databases": {
+                                            "description": "Databases and users to create after initialisation.",
+                                            "items": {
+                                                "description": "A database and optional user to create during service initialisation.\nUsed by `mariadb-galera`, `postgres`, and `mysql` service types.",
+                                                "properties": {
+                                                    "charset": {
+                                                        "description": "Character set (e.g. `\"utf8mb4\"`). Only applies to MySQL/MariaDB.",
+                                                        "title": "charset",
+                                                        "type": "string"
+                                                    },
+                                                    "collation": {
+                                                        "description": "Collation (e.g. `\"utf8mb4_unicode_ci\"`). Only applies to MySQL/MariaDB.",
+                                                        "title": "collation",
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "description": "Database name to create.",
+                                                        "title": "name",
+                                                        "type": "string"
+                                                    },
+                                                    "password": {
+                                                        "description": "Password for the database user.",
+                                                        "title": "password",
+                                                        "type": "string"
+                                                    },
+                                                    "user": {
+                                                        "description": "Database user to create and grant privileges to this database.",
+                                                        "title": "user",
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "name"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            "title": "databases",
+                                            "type": "array"
+                                        },
+                                        "listen_addresses": {
+                                            "description": "Interfaces PostgreSQL listens on.\nUse `\"*\"` to accept connections from all interfaces (required for HAProxy\nto reach private server IPs). Defaults to `\"localhost\"`.",
+                                            "title": "listen_addresses",
+                                            "type": "string"
+                                        },
+                                        "max_connections": {
+                                            "description": "Maximum number of client connections. Defaults to `100`.\nIncrease when using a connection pooler like PgBouncer or HAProxy.",
+                                            "title": "max_connections",
+                                            "type": "number"
+                                        },
+                                        "port": {
+                                            "description": "Port PostgreSQL listens on. Defaults to `5432`.",
+                                            "title": "port",
+                                            "type": "number"
+                                        },
+                                        "replication": {
+                                            "description": "Streaming replication configuration.",
+                                            "properties": {
+                                                "enabled": {
+                                                    "description": "Enable streaming replication. Defaults to `false`.",
+                                                    "title": "enabled",
+                                                    "type": "boolean"
+                                                },
+                                                "max_wal_senders": {
+                                                    "description": "Maximum number of concurrent WAL sender processes.\nShould be ≥ the number of replica instances. Defaults to `5`.",
+                                                    "title": "max_wal_senders",
+                                                    "type": "number"
+                                                },
+                                                "password": {
+                                                    "description": "Password for the replication user.",
+                                                    "title": "password",
+                                                    "type": "string"
+                                                },
+                                                "user": {
+                                                    "description": "Replication user created on the primary. Defaults to `\"replicator\"`.",
+                                                    "title": "user",
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "title": "replication",
+                                            "type": "object"
+                                        },
+                                        "root_password": {
+                                            "description": "Password for the `postgres` superuser.",
+                                            "title": "root_password",
+                                            "type": "string"
+                                        },
+                                        "shared_buffers": {
+                                            "description": "Shared memory buffer size (e.g. `\"256MB\"`, `\"1GB\"`).\nRule of thumb: set to 25% of available RAM. Defaults to `\"128MB\"`.",
+                                            "title": "shared_buffers",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "title": "postgres",
+                                    "type": "object"
+                                },
+                                "proxysql": {
+                                    "description": "ProxySQL proxy configuration (hostgroups, query rules, monitor user).\nOnly used when `type` is `\"proxysql\"`.",
+                                    "properties": {
+                                        "admin_password": {
+                                            "description": "ProxySQL admin password.",
+                                            "title": "admin_password",
+                                            "type": "string"
+                                        },
+                                        "admin_port": {
+                                            "description": "ProxySQL admin interface port (MySQL protocol, admin credentials required).\nDefaults to `6032`.",
+                                            "title": "admin_port",
+                                            "type": "number"
+                                        },
+                                        "admin_user": {
+                                            "description": "ProxySQL admin username. Defaults to `\"admin\"`.",
+                                            "title": "admin_user",
+                                            "type": "string"
+                                        },
+                                        "listen_port": {
+                                            "description": "MySQL-protocol port clients connect to on ProxySQL.\nDefaults to `6033`.",
+                                            "title": "listen_port",
+                                            "type": "number"
+                                        },
+                                        "monitor_password": {
+                                            "description": "Password for the ProxySQL monitor user.",
+                                            "title": "monitor_password",
+                                            "type": "string"
+                                        },
+                                        "monitor_user": {
+                                            "description": "MySQL user ProxySQL uses to monitor backend health via `SELECT 1` queries.\nThis user needs `USAGE` privilege on the backend servers.",
+                                            "title": "monitor_user",
+                                            "type": "string"
+                                        },
+                                        "query_rules": {
+                                            "description": "Query routing rules evaluated against incoming query digests.\nRules are applied in ascending `rule_id` order.",
+                                            "items": {
+                                                "description": "A query routing rule for ProxySQL.\nRules are evaluated in ascending `rule_id` order; the first matching rule wins.",
+                                                "properties": {
+                                                    "apply": {
+                                                        "description": "If `true`, stop evaluating further rules once this rule matches.\nDefaults to `true`.",
+                                                        "title": "apply",
+                                                        "type": "boolean"
+                                                    },
+                                                    "comment": {
+                                                        "description": "Human-readable annotation stored in the ProxySQL rule table.",
+                                                        "title": "comment",
+                                                        "type": "string"
+                                                    },
+                                                    "destination_hostgroup": {
+                                                        "description": "Hostgroup to send matching queries to.",
+                                                        "title": "destination_hostgroup",
+                                                        "type": "number"
+                                                    },
+                                                    "match_digest": {
+                                                        "description": "Regular expression matched against the normalised query digest.\nExample: `\"^SELECT\"` matches all SELECT statements.",
+                                                        "title": "match_digest",
+                                                        "type": "string"
+                                                    },
+                                                    "rule_id": {
+                                                        "description": "Numeric rule identifier. Lower numbers are evaluated first.\nDefaults to insertion order if omitted.",
+                                                        "title": "rule_id",
+                                                        "type": "number"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            },
+                                            "title": "query_rules",
+                                            "type": "array"
+                                        },
+                                        "reader_hostgroup": {
+                                            "description": "Hostgroup ID for read traffic (SELECT).\nDefaults to `20`.",
+                                            "title": "reader_hostgroup",
+                                            "type": "number"
+                                        },
+                                        "target_services": {
+                                            "description": "Backend services ProxySQL will route connections to.\nTypically points to a `mysql` service. Use different `hostgroup` values\non target entries to separate writer and reader pools.",
+                                            "items": {
+                                                "description": "A single backend server entry for a ProxySQL service.\nMaps to one `mysql_servers` row in the ProxySQL admin database.",
+                                                "properties": {
+                                                    "backup": {
+                                                        "description": "If `true`, this server is placed in the OFFLINE_SOFT state initially.",
+                                                        "title": "backup",
+                                                        "type": "boolean"
+                                                    },
+                                                    "hostgroup": {
+                                                        "description": "ProxySQL hostgroup ID. Use separate hostgroups for writers and readers\n(e.g. writers: `10`, readers: `20`) to enable read/write splitting via query rules.\nDefaults to `0`.",
+                                                        "title": "hostgroup",
+                                                        "type": "number"
+                                                    },
+                                                    "max_connections": {
+                                                        "description": "Maximum number of connections ProxySQL will open to this backend server.",
+                                                        "title": "max_connections",
+                                                        "type": "number"
+                                                    },
+                                                    "port": {
+                                                        "description": "MySQL-protocol port the target service listens on (typically `3306`).",
+                                                        "title": "port",
+                                                        "type": "number"
+                                                    },
+                                                    "service_name": {
+                                                        "description": "Name of the service in the same deployment to route traffic to.",
+                                                        "title": "service_name",
+                                                        "type": "string"
+                                                    },
+                                                    "weight": {
+                                                        "description": "Relative connection weight within the hostgroup.",
+                                                        "title": "weight",
+                                                        "type": "number"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "port",
+                                                    "service_name"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            "title": "target_services",
+                                            "type": "array"
+                                        },
+                                        "writer_hostgroup": {
+                                            "description": "Hostgroup ID for write traffic (INSERT, UPDATE, DELETE, DDL).\nDefaults to `10`.",
+                                            "title": "writer_hostgroup",
+                                            "type": "number"
+                                        }
+                                    },
+                                    "title": "proxysql",
+                                    "type": "object"
                                 },
                                 "run": {
                                     "description": "Preflight, start, and postflight shell scripts for this service.",
@@ -682,7 +1300,13 @@
                                     "enum": [
                                         "default",
                                         "docker",
-                                        "load_balancer"
+                                        "haproxy",
+                                        "load_balancer",
+                                        "mariadb-galera",
+                                        "maxscale",
+                                        "mysql",
+                                        "postgres",
+                                        "proxysql"
                                     ],
                                     "title": "type",
                                     "type": "string"
@@ -1011,6 +1635,137 @@
                                             "description": "Git repository source(s) to clone/pull onto target servers.",
                                             "title": "git"
                                         },
+                                        "haproxy": {
+                                            "description": "HAProxy proxy configuration (frontends, backends, health checks, stats).\nOnly used when `type` is `\"haproxy\"`.",
+                                            "properties": {
+                                                "balance": {
+                                                    "description": "Load balancing algorithm.\n- `roundrobin` — each server in turn (default)\n- `leastconn` — server with fewest active connections (best for databases)\n- `first` — first available server (useful for active/passive failover)\n- `source` — sticky sessions based on client IP",
+                                                    "enum": [
+                                                        "first",
+                                                        "leastconn",
+                                                        "roundrobin",
+                                                        "source"
+                                                    ],
+                                                    "title": "balance",
+                                                    "type": "string"
+                                                },
+                                                "listen_port": {
+                                                    "description": "Port HAProxy's frontend listens on for client connections.\nDefaults to `5432` for postgres mode, `3306` for mysql mode.",
+                                                    "title": "listen_port",
+                                                    "type": "number"
+                                                },
+                                                "mode": {
+                                                    "description": "Proxy mode.\n- `tcp` — layer-4 pass-through, required for databases (default)\n- `http` — layer-7 HTTP proxy with header inspection",
+                                                    "enum": [
+                                                        "http",
+                                                        "tcp"
+                                                    ],
+                                                    "title": "mode",
+                                                    "type": "string"
+                                                },
+                                                "stats_password": {
+                                                    "description": "Password for the HAProxy statistics page.",
+                                                    "title": "stats_password",
+                                                    "type": "string"
+                                                },
+                                                "stats_port": {
+                                                    "description": "Port for the HAProxy statistics web page. Defaults to `8404`.",
+                                                    "title": "stats_port",
+                                                    "type": "number"
+                                                },
+                                                "stats_user": {
+                                                    "description": "Username for the HAProxy statistics page.",
+                                                    "title": "stats_user",
+                                                    "type": "string"
+                                                },
+                                                "target_services": {
+                                                    "description": "Backend services HAProxy will proxy traffic to.\nAccepts any service type (postgres, mysql, mariadb-galera, etc.).",
+                                                    "items": {
+                                                        "description": "A single backend server entry for an HAProxy service.\nHAProxy is a generic TCP/HTTP proxy and can route to any service type.",
+                                                        "properties": {
+                                                            "backup": {
+                                                                "description": "If `true`, this server is only used when all non-backup servers are down.",
+                                                                "title": "backup",
+                                                                "type": "boolean"
+                                                            },
+                                                            "check": {
+                                                                "description": "Health check settings for this backend server.",
+                                                                "properties": {
+                                                                    "fall": {
+                                                                        "description": "Number of consecutive failures required to mark a server DOWN. Defaults to `3`.",
+                                                                        "title": "fall",
+                                                                        "type": "number"
+                                                                    },
+                                                                    "interval": {
+                                                                        "description": "Time between health checks (e.g. `\"2s\"`, `\"500ms\"`).\nDefaults to `\"2s\"`.",
+                                                                        "title": "interval",
+                                                                        "type": "string"
+                                                                    },
+                                                                    "rise": {
+                                                                        "description": "Number of consecutive successes required to mark a server UP. Defaults to `2`.",
+                                                                        "title": "rise",
+                                                                        "type": "number"
+                                                                    },
+                                                                    "type": {
+                                                                        "description": "Health check protocol.\n- `tcp` — basic TCP connection check (works for any service)\n- `http` — HTTP request check\n- `mysql` — MySQL/MariaDB protocol handshake check\n- `pgsql` — PostgreSQL startup message check\n- `redis` — Redis PING check",
+                                                                        "enum": [
+                                                                            "http",
+                                                                            "mysql",
+                                                                            "pgsql",
+                                                                            "redis",
+                                                                            "tcp"
+                                                                        ],
+                                                                        "title": "type",
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "title": "check",
+                                                                "type": "object"
+                                                            },
+                                                            "port": {
+                                                                "description": "Port the target service listens on.",
+                                                                "title": "port",
+                                                                "type": "number"
+                                                            },
+                                                            "service_name": {
+                                                                "description": "Name of the service in the same deployment to proxy traffic to.",
+                                                                "title": "service_name",
+                                                                "type": "string"
+                                                            },
+                                                            "weight": {
+                                                                "description": "Relative weight for load distribution.",
+                                                                "title": "weight",
+                                                                "type": "number"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "port",
+                                                            "service_name"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "title": "target_services",
+                                                    "type": "array"
+                                                },
+                                                "timeout_client": {
+                                                    "description": "Client inactivity timeout (e.g. `\"30s\"`). Defaults to `\"30s\"`.",
+                                                    "title": "timeout_client",
+                                                    "type": "string"
+                                                },
+                                                "timeout_connect": {
+                                                    "description": "TCP connection timeout (e.g. `\"5s\"`). Defaults to `\"5s\"`.",
+                                                    "title": "timeout_connect",
+                                                    "type": "string"
+                                                },
+                                                "timeout_server": {
+                                                    "description": "Server response timeout (e.g. `\"30s\"`). Defaults to `\"30s\"`.",
+                                                    "title": "timeout_server",
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "title": "haproxy",
+                                            "type": "object"
+                                        },
                                         "healthcheck": {
                                             "description": "Healthcheck run after the service starts to verify it is live.",
                                             "properties": {
@@ -1051,10 +1806,497 @@
                                             "title": "logs",
                                             "type": "array"
                                         },
+                                        "mariadb_galera": {
+                                            "description": "MariaDB Galera cluster configuration (cluster name, SST method, databases).\nOnly used when `type` is `\"mariadb-galera\"`.",
+                                            "properties": {
+                                                "bind_address": {
+                                                    "description": "Address to bind the MySQL listener to.\nUse `\"0.0.0.0\"` to accept connections from all interfaces (required for\nMaxScale or HAProxy to reach private cluster IPs). Defaults to `\"0.0.0.0\"`.",
+                                                    "title": "bind_address",
+                                                    "type": "string"
+                                                },
+                                                "cluster_name": {
+                                                    "description": "`wsrep_cluster_name` — shared identifier all Galera nodes must agree on.\nDefaults to `\"turboci_galera_cluster\"`.",
+                                                    "title": "cluster_name",
+                                                    "type": "string"
+                                                },
+                                                "databases": {
+                                                    "description": "Databases and users to create after cluster bootstrap.",
+                                                    "items": {
+                                                        "description": "A database and optional user to create during service initialisation.\nUsed by `mariadb-galera`, `postgres`, and `mysql` service types.",
+                                                        "properties": {
+                                                            "charset": {
+                                                                "description": "Character set (e.g. `\"utf8mb4\"`). Only applies to MySQL/MariaDB.",
+                                                                "title": "charset",
+                                                                "type": "string"
+                                                            },
+                                                            "collation": {
+                                                                "description": "Collation (e.g. `\"utf8mb4_unicode_ci\"`). Only applies to MySQL/MariaDB.",
+                                                                "title": "collation",
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "description": "Database name to create.",
+                                                                "title": "name",
+                                                                "type": "string"
+                                                            },
+                                                            "password": {
+                                                                "description": "Password for the database user.",
+                                                                "title": "password",
+                                                                "type": "string"
+                                                            },
+                                                            "user": {
+                                                                "description": "Database user to create and grant privileges to this database.",
+                                                                "title": "user",
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "name"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "title": "databases",
+                                                    "type": "array"
+                                                },
+                                                "port": {
+                                                    "description": "MySQL-protocol port the cluster nodes listen on. Defaults to `3306`.",
+                                                    "title": "port",
+                                                    "type": "number"
+                                                },
+                                                "root_password": {
+                                                    "description": "MariaDB root user password.",
+                                                    "title": "root_password",
+                                                    "type": "string"
+                                                },
+                                                "sst_method": {
+                                                    "description": "State Snapshot Transfer method used when a new node joins the cluster.\n- `mariabackup` — hot backup via MariaDB Backup (recommended, no locks)\n- `rsync` — rsync-based full copy (simple, blocks writes during transfer)\n- `xtrabackup-v2` — Percona XtraBackup (for MySQL-based setups)",
+                                                    "enum": [
+                                                        "mariabackup",
+                                                        "rsync",
+                                                        "xtrabackup-v2"
+                                                    ],
+                                                    "title": "sst_method",
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "title": "mariadb_galera",
+                                            "type": "object"
+                                        },
+                                        "maxscale": {
+                                            "description": "MaxScale proxy configuration (routers, monitors, admin API).\nOnly used when `type` is `\"maxscale\"`.",
+                                            "properties": {
+                                                "admin_password": {
+                                                    "description": "MaxScale admin REST API password.",
+                                                    "title": "admin_password",
+                                                    "type": "string"
+                                                },
+                                                "admin_port": {
+                                                    "description": "Port for the MaxScale REST API and GUI. Defaults to `8989`.",
+                                                    "title": "admin_port",
+                                                    "type": "number"
+                                                },
+                                                "admin_user": {
+                                                    "description": "MaxScale admin REST API username. Defaults to `\"admin\"`.",
+                                                    "title": "admin_user",
+                                                    "type": "string"
+                                                },
+                                                "listen_port": {
+                                                    "description": "MySQL-protocol port MaxScale listens on for client connections.\nDefaults to `3306`.",
+                                                    "title": "listen_port",
+                                                    "type": "number"
+                                                },
+                                                "monitor": {
+                                                    "description": "MaxScale monitor module.\n- `galeramon` — for MariaDB Galera clusters (detects primary/donor/joiner state)\n- `mariadbmon` — for MariaDB/MySQL primary-replica setups\n- `mysqlmon` — legacy monitor for older MySQL setups",
+                                                    "enum": [
+                                                        "galeramon",
+                                                        "mariadbmon",
+                                                        "mysqlmon"
+                                                    ],
+                                                    "title": "monitor",
+                                                    "type": "string"
+                                                },
+                                                "password": {
+                                                    "description": "Password for the MaxScale database user.",
+                                                    "title": "password",
+                                                    "type": "string"
+                                                },
+                                                "router": {
+                                                    "description": "MaxScale router module.\n- `readwritesplit` — routes writes to primary, distributes reads across replicas (default)\n- `readconnroute` — simple round-robin connection routing\n- `schemarouter` — routes by schema name (sharding)",
+                                                    "enum": [
+                                                        "readconnroute",
+                                                        "readwritesplit",
+                                                        "schemarouter"
+                                                    ],
+                                                    "title": "router",
+                                                    "type": "string"
+                                                },
+                                                "target_services": {
+                                                    "description": "Backend services MaxScale will route connections to.\nTypically points to a `mariadb-galera` or `mysql` service.",
+                                                    "items": {
+                                                        "description": "A single backend server entry for a MaxScale proxy service.\nPoints to a `mariadb-galera` or `mysql` service in the same deployment.",
+                                                        "properties": {
+                                                            "backup": {
+                                                                "description": "If `true`, this target is used only when all non-backup servers are unavailable.",
+                                                                "title": "backup",
+                                                                "type": "boolean"
+                                                            },
+                                                            "port": {
+                                                                "description": "MySQL-protocol port the target service listens on (typically `3306`).",
+                                                                "title": "port",
+                                                                "type": "number"
+                                                            },
+                                                            "service_name": {
+                                                                "description": "Name of the service in the same deployment to route DB traffic to.",
+                                                                "title": "service_name",
+                                                                "type": "string"
+                                                            },
+                                                            "weight": {
+                                                                "description": "Relative weight for connection distribution. Higher values receive more connections.",
+                                                                "title": "weight",
+                                                                "type": "number"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "port",
+                                                            "service_name"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "title": "target_services",
+                                                    "type": "array"
+                                                },
+                                                "user": {
+                                                    "description": "Database user MaxScale uses for monitoring and service authentication.\nThis user must have `REPLICATION CLIENT`, `SHOW DATABASES`, and `SELECT` privileges.",
+                                                    "title": "user",
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "title": "maxscale",
+                                            "type": "object"
+                                        },
+                                        "mysql": {
+                                            "description": "MySQL server configuration (port, users, replication).\nOnly used when `type` is `\"mysql\"`.",
+                                            "properties": {
+                                                "bind_address": {
+                                                    "description": "Address MySQL binds to.\nUse `\"0.0.0.0\"` to accept connections from all interfaces (required for\nProxySQL or HAProxy to reach private server IPs). Defaults to `\"0.0.0.0\"`.",
+                                                    "title": "bind_address",
+                                                    "type": "string"
+                                                },
+                                                "databases": {
+                                                    "description": "Databases and users to create after initialisation.",
+                                                    "items": {
+                                                        "description": "A database and optional user to create during service initialisation.\nUsed by `mariadb-galera`, `postgres`, and `mysql` service types.",
+                                                        "properties": {
+                                                            "charset": {
+                                                                "description": "Character set (e.g. `\"utf8mb4\"`). Only applies to MySQL/MariaDB.",
+                                                                "title": "charset",
+                                                                "type": "string"
+                                                            },
+                                                            "collation": {
+                                                                "description": "Collation (e.g. `\"utf8mb4_unicode_ci\"`). Only applies to MySQL/MariaDB.",
+                                                                "title": "collation",
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "description": "Database name to create.",
+                                                                "title": "name",
+                                                                "type": "string"
+                                                            },
+                                                            "password": {
+                                                                "description": "Password for the database user.",
+                                                                "title": "password",
+                                                                "type": "string"
+                                                            },
+                                                            "user": {
+                                                                "description": "Database user to create and grant privileges to this database.",
+                                                                "title": "user",
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "name"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "title": "databases",
+                                                    "type": "array"
+                                                },
+                                                "max_connections": {
+                                                    "description": "Maximum number of simultaneous client connections. Defaults to `151`.",
+                                                    "title": "max_connections",
+                                                    "type": "number"
+                                                },
+                                                "port": {
+                                                    "description": "MySQL port. Defaults to `3306`.",
+                                                    "title": "port",
+                                                    "type": "number"
+                                                },
+                                                "replication": {
+                                                    "description": "Replication configuration.",
+                                                    "properties": {
+                                                        "enabled": {
+                                                            "description": "Enable MySQL binary-log replication. Defaults to `false`.",
+                                                            "title": "enabled",
+                                                            "type": "boolean"
+                                                        },
+                                                        "password": {
+                                                            "description": "Password for the replication user.",
+                                                            "title": "password",
+                                                            "type": "string"
+                                                        },
+                                                        "server_id": {
+                                                            "description": "Unique numeric server identifier required for replication.\nMust be distinct across all nodes. The primary is typically `1`;\nreplicas auto-assign from `2` upward if not specified.",
+                                                            "title": "server_id",
+                                                            "type": "number"
+                                                        },
+                                                        "user": {
+                                                            "description": "Replication user created on the primary. Defaults to `\"replicator\"`.",
+                                                            "title": "user",
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "title": "replication",
+                                                    "type": "object"
+                                                },
+                                                "root_password": {
+                                                    "description": "MySQL root user password.",
+                                                    "title": "root_password",
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "title": "mysql",
+                                            "type": "object"
+                                        },
                                         "os": {
                                             "description": "OS image slug to use when creating servers for this service.",
                                             "title": "os",
                                             "type": "string"
+                                        },
+                                        "postgres": {
+                                            "description": "PostgreSQL server configuration (port, users, replication).\nOnly used when `type` is `\"postgres\"`.",
+                                            "properties": {
+                                                "databases": {
+                                                    "description": "Databases and users to create after initialisation.",
+                                                    "items": {
+                                                        "description": "A database and optional user to create during service initialisation.\nUsed by `mariadb-galera`, `postgres`, and `mysql` service types.",
+                                                        "properties": {
+                                                            "charset": {
+                                                                "description": "Character set (e.g. `\"utf8mb4\"`). Only applies to MySQL/MariaDB.",
+                                                                "title": "charset",
+                                                                "type": "string"
+                                                            },
+                                                            "collation": {
+                                                                "description": "Collation (e.g. `\"utf8mb4_unicode_ci\"`). Only applies to MySQL/MariaDB.",
+                                                                "title": "collation",
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "description": "Database name to create.",
+                                                                "title": "name",
+                                                                "type": "string"
+                                                            },
+                                                            "password": {
+                                                                "description": "Password for the database user.",
+                                                                "title": "password",
+                                                                "type": "string"
+                                                            },
+                                                            "user": {
+                                                                "description": "Database user to create and grant privileges to this database.",
+                                                                "title": "user",
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "name"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "title": "databases",
+                                                    "type": "array"
+                                                },
+                                                "listen_addresses": {
+                                                    "description": "Interfaces PostgreSQL listens on.\nUse `\"*\"` to accept connections from all interfaces (required for HAProxy\nto reach private server IPs). Defaults to `\"localhost\"`.",
+                                                    "title": "listen_addresses",
+                                                    "type": "string"
+                                                },
+                                                "max_connections": {
+                                                    "description": "Maximum number of client connections. Defaults to `100`.\nIncrease when using a connection pooler like PgBouncer or HAProxy.",
+                                                    "title": "max_connections",
+                                                    "type": "number"
+                                                },
+                                                "port": {
+                                                    "description": "Port PostgreSQL listens on. Defaults to `5432`.",
+                                                    "title": "port",
+                                                    "type": "number"
+                                                },
+                                                "replication": {
+                                                    "description": "Streaming replication configuration.",
+                                                    "properties": {
+                                                        "enabled": {
+                                                            "description": "Enable streaming replication. Defaults to `false`.",
+                                                            "title": "enabled",
+                                                            "type": "boolean"
+                                                        },
+                                                        "max_wal_senders": {
+                                                            "description": "Maximum number of concurrent WAL sender processes.\nShould be ≥ the number of replica instances. Defaults to `5`.",
+                                                            "title": "max_wal_senders",
+                                                            "type": "number"
+                                                        },
+                                                        "password": {
+                                                            "description": "Password for the replication user.",
+                                                            "title": "password",
+                                                            "type": "string"
+                                                        },
+                                                        "user": {
+                                                            "description": "Replication user created on the primary. Defaults to `\"replicator\"`.",
+                                                            "title": "user",
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "title": "replication",
+                                                    "type": "object"
+                                                },
+                                                "root_password": {
+                                                    "description": "Password for the `postgres` superuser.",
+                                                    "title": "root_password",
+                                                    "type": "string"
+                                                },
+                                                "shared_buffers": {
+                                                    "description": "Shared memory buffer size (e.g. `\"256MB\"`, `\"1GB\"`).\nRule of thumb: set to 25% of available RAM. Defaults to `\"128MB\"`.",
+                                                    "title": "shared_buffers",
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "title": "postgres",
+                                            "type": "object"
+                                        },
+                                        "proxysql": {
+                                            "description": "ProxySQL proxy configuration (hostgroups, query rules, monitor user).\nOnly used when `type` is `\"proxysql\"`.",
+                                            "properties": {
+                                                "admin_password": {
+                                                    "description": "ProxySQL admin password.",
+                                                    "title": "admin_password",
+                                                    "type": "string"
+                                                },
+                                                "admin_port": {
+                                                    "description": "ProxySQL admin interface port (MySQL protocol, admin credentials required).\nDefaults to `6032`.",
+                                                    "title": "admin_port",
+                                                    "type": "number"
+                                                },
+                                                "admin_user": {
+                                                    "description": "ProxySQL admin username. Defaults to `\"admin\"`.",
+                                                    "title": "admin_user",
+                                                    "type": "string"
+                                                },
+                                                "listen_port": {
+                                                    "description": "MySQL-protocol port clients connect to on ProxySQL.\nDefaults to `6033`.",
+                                                    "title": "listen_port",
+                                                    "type": "number"
+                                                },
+                                                "monitor_password": {
+                                                    "description": "Password for the ProxySQL monitor user.",
+                                                    "title": "monitor_password",
+                                                    "type": "string"
+                                                },
+                                                "monitor_user": {
+                                                    "description": "MySQL user ProxySQL uses to monitor backend health via `SELECT 1` queries.\nThis user needs `USAGE` privilege on the backend servers.",
+                                                    "title": "monitor_user",
+                                                    "type": "string"
+                                                },
+                                                "query_rules": {
+                                                    "description": "Query routing rules evaluated against incoming query digests.\nRules are applied in ascending `rule_id` order.",
+                                                    "items": {
+                                                        "description": "A query routing rule for ProxySQL.\nRules are evaluated in ascending `rule_id` order; the first matching rule wins.",
+                                                        "properties": {
+                                                            "apply": {
+                                                                "description": "If `true`, stop evaluating further rules once this rule matches.\nDefaults to `true`.",
+                                                                "title": "apply",
+                                                                "type": "boolean"
+                                                            },
+                                                            "comment": {
+                                                                "description": "Human-readable annotation stored in the ProxySQL rule table.",
+                                                                "title": "comment",
+                                                                "type": "string"
+                                                            },
+                                                            "destination_hostgroup": {
+                                                                "description": "Hostgroup to send matching queries to.",
+                                                                "title": "destination_hostgroup",
+                                                                "type": "number"
+                                                            },
+                                                            "match_digest": {
+                                                                "description": "Regular expression matched against the normalised query digest.\nExample: `\"^SELECT\"` matches all SELECT statements.",
+                                                                "title": "match_digest",
+                                                                "type": "string"
+                                                            },
+                                                            "rule_id": {
+                                                                "description": "Numeric rule identifier. Lower numbers are evaluated first.\nDefaults to insertion order if omitted.",
+                                                                "title": "rule_id",
+                                                                "type": "number"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    },
+                                                    "title": "query_rules",
+                                                    "type": "array"
+                                                },
+                                                "reader_hostgroup": {
+                                                    "description": "Hostgroup ID for read traffic (SELECT).\nDefaults to `20`.",
+                                                    "title": "reader_hostgroup",
+                                                    "type": "number"
+                                                },
+                                                "target_services": {
+                                                    "description": "Backend services ProxySQL will route connections to.\nTypically points to a `mysql` service. Use different `hostgroup` values\non target entries to separate writer and reader pools.",
+                                                    "items": {
+                                                        "description": "A single backend server entry for a ProxySQL service.\nMaps to one `mysql_servers` row in the ProxySQL admin database.",
+                                                        "properties": {
+                                                            "backup": {
+                                                                "description": "If `true`, this server is placed in the OFFLINE_SOFT state initially.",
+                                                                "title": "backup",
+                                                                "type": "boolean"
+                                                            },
+                                                            "hostgroup": {
+                                                                "description": "ProxySQL hostgroup ID. Use separate hostgroups for writers and readers\n(e.g. writers: `10`, readers: `20`) to enable read/write splitting via query rules.\nDefaults to `0`.",
+                                                                "title": "hostgroup",
+                                                                "type": "number"
+                                                            },
+                                                            "max_connections": {
+                                                                "description": "Maximum number of connections ProxySQL will open to this backend server.",
+                                                                "title": "max_connections",
+                                                                "type": "number"
+                                                            },
+                                                            "port": {
+                                                                "description": "MySQL-protocol port the target service listens on (typically `3306`).",
+                                                                "title": "port",
+                                                                "type": "number"
+                                                            },
+                                                            "service_name": {
+                                                                "description": "Name of the service in the same deployment to route traffic to.",
+                                                                "title": "service_name",
+                                                                "type": "string"
+                                                            },
+                                                            "weight": {
+                                                                "description": "Relative connection weight within the hostgroup.",
+                                                                "title": "weight",
+                                                                "type": "number"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "port",
+                                                            "service_name"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "title": "target_services",
+                                                    "type": "array"
+                                                },
+                                                "writer_hostgroup": {
+                                                    "description": "Hostgroup ID for write traffic (INSERT, UPDATE, DELETE, DDL).\nDefaults to `10`.",
+                                                    "title": "writer_hostgroup",
+                                                    "type": "number"
+                                                }
+                                            },
+                                            "title": "proxysql",
+                                            "type": "object"
                                         },
                                         "run": {
                                             "description": "Preflight, start, and postflight shell scripts for this service.",
@@ -1387,7 +2629,13 @@
                                             "enum": [
                                                 "default",
                                                 "docker",
-                                                "load_balancer"
+                                                "haproxy",
+                                                "load_balancer",
+                                                "mariadb-galera",
+                                                "maxscale",
+                                                "mysql",
+                                                "postgres",
+                                                "proxysql"
                                             ],
                                             "title": "type",
                                             "type": "string"

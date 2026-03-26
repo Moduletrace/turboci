@@ -1,0 +1,120 @@
+# yaml-language-server: $schema=../../../../schema/turboci.schema.json
+
+deployments:
+    - deployment_name: mysql_proxysql
+      provider: hetzner
+      location: ash
+      description: >
+          MySQL 8 with primary/replica replication (1 primary + 2 replicas)
+          fronted by ProxySQL for connection multiplexing and read/write splitting.
+
+          ProxySQL routes write queries (INSERT, UPDATE, DELETE, DDL) to the
+          primary (hostgroup 10) and read queries (SELECT) to replicas
+          (hostgroup 20) using query digest matching rules.
+
+          ProxySQL supports MySQL 5.5+ and MariaDB 5.5+. It does NOT support
+          PostgreSQL — use HAProxy for PostgreSQL proxying.
+
+          MaxScale is an alternative to ProxySQL and also supports MySQL 5.5+
+          and all MariaDB versions, offering similar read/write splitting via
+          the readwritesplit router.
+      services:
+          db:
+              type: mysql
+              instances: 3
+              clusters: 1
+              server_type: cpx21
+              mysql:
+                  port: 3306
+                  root_password: "${MYSQL_ROOT_PASSWORD}"
+                  bind_address: "0.0.0.0"
+                  max_connections: 500
+                  databases:
+                      - name: myapp
+                        user: myapp_user
+                        password: "${MYSQL_APP_PASSWORD}"
+                        charset: utf8mb4
+                        collation: utf8mb4_unicode_ci
+                  replication:
+                      enabled: true
+                      user: replicator
+                      password: "${MYSQL_REPL_PASSWORD}"
+              run:
+                  preflight:
+                      cmds:
+                          - apt-get update -qq
+                          - apt-get install -y mysql-server
+                          - systemctl stop mysql || true
+                          # Configure my.cnf with server-id, binlog, and GTID settings
+                          - chmod +x /app/scripts/configure-mysql.sh && /app/scripts/configure-mysql.sh
+                  start:
+                      cmds:
+                          - systemctl enable mysql
+                          - systemctl start mysql
+              healthcheck:
+                  cmd: mysqladmin -u root -p"${MYSQL_ROOT_PASSWORD}" ping
+                  test: "mysqld is alive"
+              logs:
+                  - journalctl -fu mysql
+
+          proxy:
+              type: proxysql
+              instances: 1
+              clusters: 1
+              server_type: cpx11
+              proxysql:
+                  target_services:
+                      - service_name: db
+                        port: 3306
+                        hostgroup: 10
+                        max_connections: 200
+                      - service_name: db
+                        port: 3306
+                        hostgroup: 20
+                        max_connections: 200
+                  listen_port: 6033
+                  admin_port: 6032
+                  admin_user: admin
+                  admin_password: "${PROXYSQL_ADMIN_PASSWORD}"
+                  monitor_user: proxysql_monitor
+                  monitor_password: "${PROXYSQL_MONITOR_PASSWORD}"
+                  writer_hostgroup: 10
+                  reader_hostgroup: 20
+                  query_rules:
+                      # Route SELECT FOR UPDATE to the writer (avoids phantom reads)
+                      - rule_id: 1
+                        match_digest: "^SELECT .* FOR UPDATE"
+                        destination_hostgroup: 10
+                        apply: true
+                        comment: "SELECT FOR UPDATE must go to writer"
+                      # Route all other SELECTs to replicas for read scaling
+                      - rule_id: 2
+                        match_digest: "^SELECT"
+                        destination_hostgroup: 20
+                        apply: true
+                        comment: "Read queries go to replica hostgroup"
+              run:
+                  preflight:
+                      cmds:
+                          - apt-get update -qq
+                          - apt-get install -y proxysql2 mysql-client
+                          # Render proxysql.cnf and load backends + query rules
+                          - chmod +x /app/scripts/configure-proxysql.sh && /app/scripts/configure-proxysql.sh
+                  start:
+                      cmds:
+                          - systemctl enable proxysql
+                          - systemctl start proxysql
+              healthcheck:
+                  cmd: >
+                      mysql -u admin -p"${PROXYSQL_ADMIN_PASSWORD}"
+                      -h 127.0.0.1 -P 6032 -e "SELECT * FROM runtime_mysql_servers;"
+                  test: "ONLINE"
+              logs:
+                  - journalctl -fu proxysql
+
+      env:
+          MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
+          MYSQL_APP_PASSWORD: "${MYSQL_APP_PASSWORD}"
+          MYSQL_REPL_PASSWORD: "${MYSQL_REPL_PASSWORD}"
+          PROXYSQL_ADMIN_PASSWORD: "${PROXYSQL_ADMIN_PASSWORD}"
+          PROXYSQL_MONITOR_PASSWORD: "${PROXYSQL_MONITOR_PASSWORD}"

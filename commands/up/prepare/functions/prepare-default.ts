@@ -3,6 +3,12 @@ import relayExecSSH from "@/utils/ssh/relay-exec-ssh";
 import grabServerPrepSH from "@/utils/ssh/shell-scripts/grab-server-prep-sh";
 import syncDirectories from "@/functions/server/sync-directories";
 import grabLoadBalancerServerPrepSH from "@/functions/server/shell/grab-lb-server-prep-sh";
+import grabMaxScaleServerPrepSH from "@/functions/server/shell/grab-maxscale-server-prep-sh";
+import grabHAProxyServerPrepSH from "@/functions/server/shell/grab-haproxy-server-prep-sh";
+import grabProxySQLServerPrepSH from "@/functions/server/shell/grab-proxysql-server-prep-sh";
+import grabMariadbGaleraServerPrepSH from "@/functions/server/shell/grab-mariadb-galera-server-prep-sh";
+import grabPostgresServerPrepSH from "@/functions/server/shell/grab-postgres-server-prep-sh";
+import grabMysqlServerPrepSH from "@/functions/server/shell/grab-mysql-server-prep-sh";
 import type { DefaultPrepParams, ResponseObject } from "@/types";
 import grabDockerServerPrepSH from "@/functions/server/shell/grab-docker-server-prep-sh";
 
@@ -26,6 +32,66 @@ export default async function (
                         (ip) => `"${ip}"`,
                     ),
                     load_balancer_service: service,
+                    deployment,
+                    bun: true,
+                });
+
+            case "maxscale":
+                return await grabMaxScaleServerPrepSH({
+                    private_server_ips: serversPrivateIPs.map(
+                        (ip) => `"${ip}"`,
+                    ),
+                    maxscale_service: service,
+                    deployment,
+                    bun: true,
+                });
+
+            case "haproxy":
+                return await grabHAProxyServerPrepSH({
+                    private_server_ips: serversPrivateIPs.map(
+                        (ip) => `"${ip}"`,
+                    ),
+                    haproxy_service: service,
+                    deployment,
+                    bun: true,
+                });
+
+            case "proxysql":
+                return await grabProxySQLServerPrepSH({
+                    private_server_ips: serversPrivateIPs.map(
+                        (ip) => `"${ip}"`,
+                    ),
+                    proxysql_service: service,
+                    deployment,
+                    bun: true,
+                });
+
+            case "mariadb-galera":
+                return await grabMariadbGaleraServerPrepSH({
+                    private_server_ips: serversPrivateIPs.map(
+                        (ip) => `"${ip}"`,
+                    ),
+                    service,
+                    deployment,
+                    bun: true,
+                });
+
+            case "postgres":
+                return await grabPostgresServerPrepSH({
+                    private_server_ips: serversPrivateIPs.map(
+                        (ip) => `"${ip}"`,
+                    ),
+                    service,
+                    deployment,
+                    bun: true,
+                });
+
+            case "mysql":
+                return await grabMysqlServerPrepSH({
+                    private_server_ips: serversPrivateIPs.map(
+                        (ip) => `"${ip}"`,
+                    ),
+                    service,
                     deployment,
                     bun: true,
                 });

@@ -1,4 +1,7 @@
 import grabLoadBalancerServerPrepSH from "@/functions/server/shell/grab-lb-server-prep-sh";
+import grabMaxScaleServerPrepSH from "@/functions/server/shell/grab-maxscale-server-prep-sh";
+import grabHAProxyServerPrepSH from "@/functions/server/shell/grab-haproxy-server-prep-sh";
+import grabProxySQLServerPrepSH from "@/functions/server/shell/grab-proxysql-server-prep-sh";
 import type { ParsedDeploymentServiceConfig, TCIGlobalConfig } from "@/types";
 import grabNormalizedServers from "@/utils/grab-normalized-servers";
 import relayExecSSH from "@/utils/ssh/relay-exec-ssh";
@@ -24,12 +27,29 @@ export default async function ({
         const load_balancer = load_balancers[i];
         if (!load_balancer) continue;
 
+        // Resolve target service names for each proxy type
+        const proxyTargets =
+            load_balancer.type === "maxscale"
+                ? load_balancer.maxscale?.target_services
+                : load_balancer.type === "haproxy"
+                  ? load_balancer.haproxy?.target_services
+                  : load_balancer.type === "proxysql"
+                    ? load_balancer.proxysql?.target_services
+                    : load_balancer.target_services;
+
+        const proxyServiceTypes = [
+            "load_balancer",
+            "maxscale",
+            "haproxy",
+            "proxysql",
+        ];
+
         const loadBalancerServices = services.filter(
             (srv) =>
-                srv.type !== "load_balancer" &&
-                load_balancer.target_services?.find(
-                    (tsrv) => srv.service_name == tsrv.service_name
-                )
+                !proxyServiceTypes.includes(srv.type as string) &&
+                proxyTargets?.find(
+                    (tsrv) => srv.service_name === tsrv.service_name,
+                ),
         );
 
         if (!loadBalancerServices?.[0]) continue;
@@ -55,30 +75,63 @@ export default async function ({
 
         const private_server_ips = private_server_ips_res as string[];
 
-        const newLoadBalancerConfig = await grabLoadBalancerServerPrepSH({
-            deployment,
-            private_server_ips,
-            load_balancer_service: load_balancer,
-            bun: true,
-        });
+        // Dispatch to the correct prep function based on proxy type
+        const newProxyConfig = await (async () => {
+            switch (load_balancer.type) {
+                case "maxscale":
+                    return await grabMaxScaleServerPrepSH({
+                        deployment,
+                        private_server_ips,
+                        maxscale_service: load_balancer,
+                        skip_init: true,
+                        bun: true,
+                    });
 
-        if (!newLoadBalancerConfig) {
+                case "haproxy":
+                    return await grabHAProxyServerPrepSH({
+                        deployment,
+                        private_server_ips,
+                        haproxy_service: load_balancer,
+                        skip_init: true,
+                        bun: true,
+                    });
+
+                case "proxysql":
+                    return await grabProxySQLServerPrepSH({
+                        deployment,
+                        private_server_ips,
+                        proxysql_service: load_balancer,
+                        skip_init: true,
+                        bun: true,
+                    });
+
+                default:
+                    return await grabLoadBalancerServerPrepSH({
+                        deployment,
+                        private_server_ips,
+                        load_balancer_service: load_balancer,
+                        bun: true,
+                    });
+            }
+        })();
+
+        if (!newProxyConfig) {
             global.ORA_SPINNER.stop();
             return;
         }
 
-        const updateLoadBalancerConfig = await relayExecSSH({
-            cmd: newLoadBalancerConfig,
+        const updateResult = await relayExecSSH({
+            cmd: newProxyConfig,
             deployment,
             log_error: true,
             bun: true,
         });
 
-        if (!updateLoadBalancerConfig) {
+        if (!updateResult) {
             console.log(
                 `${chalk.white(
-                    chalk.bold(load_balancer.service_name)
-                )} ${chalk.red(`could not be updated!`)}`
+                    chalk.bold(load_balancer.service_name),
+                )} ${chalk.red(`could not be updated!`)}`,
             );
             process.exit(1);
         }

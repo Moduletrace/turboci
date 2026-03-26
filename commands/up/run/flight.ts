@@ -28,6 +28,23 @@ export default async function ({
         let work_dir = service.dir_mappings?.[0]?.dst;
 
         switch (serviceType) {
+            // Proxy service types are fully configured in the prepare phase.
+            // Their daemons (nginx, maxscale, haproxy, proxysql) are started
+            // there too — nothing to do in the run phase.
+            case "load_balancer":
+            case "maxscale":
+            case "haproxy":
+            case "proxysql":
+                break;
+
+            // Database server types (mariadb-galera, postgres, mysql) behave
+            // like "default": run whatever the user defines in run.preflight /
+            // run.start / run.postflight. The prep phase wrote helper scripts
+            // (tci-galera-start.sh, tci-postgres-start.sh, tci-mysql-start.sh)
+            // that users can call from those scripts.
+            case "mariadb-galera":
+            case "postgres":
+            case "mysql":
             case "default":
                 const defaultCmds =
                     paradigm == "preflight"
@@ -104,9 +121,6 @@ export default async function ({
                     sh += `\n${shText}\n`;
                 }
 
-                break;
-
-            case "load_balancer":
                 break;
 
             default:

@@ -1,0 +1,100 @@
+# yaml-language-server: $schema=../../../../schema/turboci.schema.json
+
+deployments:
+    - deployment_name: postgres_haproxy
+      provider: hetzner
+      location: ash
+      description: >
+          PostgreSQL with streaming replication (1 primary + 2 hot standbys)
+          fronted by HAProxy for load balancing and automatic failover detection.
+          HAProxy uses the native pgsql health check to verify each backend before
+          routing connections.
+
+          HAProxy is a generic TCP/HTTP proxy and works with any database backend
+          (PostgreSQL, MySQL, MariaDB, Redis, etc.) as well as regular HTTP services.
+          For query-level read/write splitting with PostgreSQL, consider PgBouncer
+          or pgpool-II instead.
+      services:
+          db:
+              type: postgres
+              instances: 3
+              clusters: 1
+              server_type: cpx21
+              postgres:
+                  port: 5432
+                  root_password: "${PG_PASSWORD}"
+                  listen_addresses: "*"
+                  max_connections: 200
+                  shared_buffers: 512MB
+                  databases:
+                      - name: myapp
+                        user: myapp_user
+                        password: "${PG_APP_PASSWORD}"
+                  replication:
+                      enabled: true
+                      user: replicator
+                      password: "${PG_REPL_PASSWORD}"
+                      max_wal_senders: 5
+              run:
+                  preflight:
+                      cmds:
+                          - apt-get update -qq
+                          - apt-get install -y postgresql postgresql-contrib
+                          - systemctl stop postgresql || true
+                          # Configure postgresql.conf and pg_hba.conf
+                          - chmod +x /app/scripts/configure-postgres.sh && /app/scripts/configure-postgres.sh
+                  start:
+                      cmds:
+                          - systemctl enable postgresql
+                          - systemctl start postgresql
+              healthcheck:
+                  cmd: pg_isready -U postgres
+                  test: "accepting connections"
+              logs:
+                  - journalctl -fu postgresql
+
+          proxy:
+              type: haproxy
+              instances: 1
+              clusters: 1
+              server_type: cpx11
+              haproxy:
+                  target_services:
+                      - service_name: db
+                        port: 5432
+                        check:
+                            type: pgsql
+                            interval: 2s
+                            rise: 2
+                            fall: 3
+                  listen_port: 5432
+                  mode: tcp
+                  balance: leastconn
+                  timeout_connect: 5s
+                  timeout_client: 30s
+                  timeout_server: 30s
+                  stats_port: 8404
+                  stats_user: admin
+                  stats_password: "${HAPROXY_STATS_PASSWORD}"
+              run:
+                  preflight:
+                      cmds:
+                          - apt-get update -qq
+                          - apt-get install -y haproxy
+                          # Render haproxy.cfg from template (substitutes backend IPs)
+                          - chmod +x /app/scripts/configure-haproxy.sh && /app/scripts/configure-haproxy.sh
+                  start:
+                      cmds:
+                          - systemctl enable haproxy
+                          - systemctl start haproxy
+              healthcheck:
+                  cmd: haproxy -c -f /etc/haproxy/haproxy.cfg
+                  test: "Configuration file is valid"
+              logs:
+                  - journalctl -fu haproxy
+
+      env:
+          PG_PASSWORD: "${PG_PASSWORD}"
+          PG_APP_PASSWORD: "${PG_APP_PASSWORD}"
+          PG_REPL_PASSWORD: "${PG_REPL_PASSWORD}"
+          HAPROXY_STATS_PASSWORD: "${HAPROXY_STATS_PASSWORD}"
