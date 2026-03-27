@@ -1,6 +1,6 @@
 {
     "name": "@moduletrace/turboci",
-    "version": "1.1.1",
+    "version": "1.2.0",
     "description": "A simple and fast cloud deployment CLI tool",
     "main": "dist/index.js",
     "bin": {
