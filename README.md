@@ -266,6 +266,14 @@ View available server specifications for each cloud provider, including location
 turboci spec
 ```
 
+### `turboci info`
+
+Get information about your current deployment.
+
+```bash
+turboci info
+```
+
 ---
 
 ## How It Works

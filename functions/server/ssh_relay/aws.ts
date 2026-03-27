@@ -155,19 +155,6 @@ export default async function ({
         vpc_id: deploymentNetwork.VpcId,
     });
 
-    // const images = await TurboCIAWS.images.list({
-    //     region,
-    //     names: ["debian-13"],
-    //     architectures: ["x86_64"],
-    // });
-
-    // const targetDebianImage = images.images[0];
-
-    // if (!targetDebianImage?.ImageId) {
-    //     console.error(`Default Debian 13 image ID not found!`);
-    //     process.exit(1);
-    // }
-
     const newSSHRelayServerRes = await TurboCIAWS.servers.create({
         name: sshRelayServerName,
         instance_type:

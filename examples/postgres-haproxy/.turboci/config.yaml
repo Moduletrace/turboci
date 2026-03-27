@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../../../schema/turboci.schema.json
+# yaml-language-server: $schema=../../../schema/turboci.schema.json
 
 deployments:
     - deployment_name: postgres_haproxy
@@ -6,20 +6,18 @@ deployments:
       location: ash
       description: >
           PostgreSQL with streaming replication (1 primary + 2 hot standbys)
-          fronted by HAProxy for load balancing and automatic failover detection.
-          HAProxy uses the native pgsql health check to verify each backend before
-          routing connections.
+          fronted by HAProxy. HAProxy uses the native pgsql health check to
+          verify each backend before routing connections.
 
-          HAProxy is a generic TCP/HTTP proxy and works with any database backend
-          (PostgreSQL, MySQL, MariaDB, Redis, etc.) as well as regular HTTP services.
-          For query-level read/write splitting with PostgreSQL, consider PgBouncer
-          or pgpool-II instead.
+          HAProxy is a generic TCP/HTTP proxy that works with any backend
+          (PostgreSQL, MySQL, MariaDB, Redis, etc.). For PostgreSQL specifically
+          it is the recommended proxy since neither MaxScale nor ProxySQL
+          support the PostgreSQL protocol.
       services:
           db:
               type: postgres
               instances: 3
               clusters: 1
-              server_type: cpx21
               postgres:
                   port: 5432
                   root_password: "${PG_PASSWORD}"
@@ -35,21 +33,17 @@ deployments:
                       user: replicator
                       password: "${PG_REPL_PASSWORD}"
                       max_wal_senders: 5
+              # TurboCI installs PostgreSQL, configures postgresql.conf and
+              # pg_hba.conf, and generates /usr/local/bin/tci-postgres-start.sh.
+              # That script starts the primary, creates users/databases, and
+              # runs pg_basebackup + standby startup on all other nodes.
               run:
-                  preflight:
-                      cmds:
-                          - apt-get update -qq
-                          - apt-get install -y postgresql postgresql-contrib
-                          - systemctl stop postgresql || true
-                          # Configure postgresql.conf and pg_hba.conf
-                          - chmod +x /app/scripts/configure-postgres.sh && /app/scripts/configure-postgres.sh
                   start:
                       cmds:
-                          - systemctl enable postgresql
-                          - systemctl start postgresql
-              healthcheck:
-                  cmd: pg_isready -U postgres
-                  test: "accepting connections"
+                          - /usr/local/bin/tci-postgres-start.sh
+              #   healthcheck:
+              #       cmd: pg_isready -U postgres
+              #       test: "accepting connections"
               logs:
                   - journalctl -fu postgresql
 
@@ -76,17 +70,9 @@ deployments:
                   stats_port: 8404
                   stats_user: admin
                   stats_password: "${HAPROXY_STATS_PASSWORD}"
-              run:
-                  preflight:
-                      cmds:
-                          - apt-get update -qq
-                          - apt-get install -y haproxy
-                          # Render haproxy.cfg from template (substitutes backend IPs)
-                          - chmod +x /app/scripts/configure-haproxy.sh && /app/scripts/configure-haproxy.sh
-                  start:
-                      cmds:
-                          - systemctl enable haproxy
-                          - systemctl start haproxy
+              # No run scripts needed — TurboCI installs HAProxy, writes
+              # /etc/haproxy/haproxy.cfg with the discovered backend IPs,
+              # validates the config, and starts the service during prepare.
               healthcheck:
                   cmd: haproxy -c -f /etc/haproxy/haproxy.cfg
                   test: "Configuration file is valid"
@@ -94,7 +80,7 @@ deployments:
                   - journalctl -fu haproxy
 
       env:
-          PG_PASSWORD: "${PG_PASSWORD}"
-          PG_APP_PASSWORD: "${PG_APP_PASSWORD}"
-          PG_REPL_PASSWORD: "${PG_REPL_PASSWORD}"
-          HAPROXY_STATS_PASSWORD: "${HAPROXY_STATS_PASSWORD}"
+          PG_PASSWORD: "changeme"
+          PG_APP_PASSWORD: "changeme"
+          PG_REPL_PASSWORD: "changeme"
+          HAPROXY_STATS_PASSWORD: "changeme"

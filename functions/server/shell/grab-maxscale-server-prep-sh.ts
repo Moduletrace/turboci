@@ -1,7 +1,4 @@
-import type {
-    ParsedDeploymentServiceConfig,
-    TCIGlobalConfig,
-} from "@/types";
+import type { ParsedDeploymentServiceConfig, TCIGlobalConfig } from "@/types";
 import bunGrabPrivateIPsBulkScripts from "@/utils/bun-scripts/bun-grab-private-ips-bulk-scripts";
 import grabPrivateIPsBulkScripts from "@/utils/ssh/shell-scripts/grab-private-ips-bulk-scripts";
 import grabMaxScaleConfig from "./grab-maxscale-config";
@@ -38,14 +35,20 @@ export default async function grabMaxScaleServerPrepSH({
         finalCmd += `cat /root/.hushlogin || touch /root/.hushlogin\n`;
         finalCmd += `apt update -qq\n`;
         finalCmd += `command -v maxscale >/dev/null 2>&1 || (\n`;
-        finalCmd += `    apt install -y wget gnupg2\n`;
-        finalCmd += `    wget -q https://downloads.mariadb.com/MariaDB/mariadb_repo_setup -O /tmp/mariadb_repo_setup\n`;
-        finalCmd += `    chmod +x /tmp/mariadb_repo_setup && /tmp/mariadb_repo_setup\n`;
-        finalCmd += `    apt update -qq && apt install -y maxscale\n`;
+        // finalCmd += `    apt install -y wget gnupg2\n`;
+        // finalCmd += `    wget -q https://downloads.mariadb.com/MariaDB/mariadb_repo_setup -O /tmp/mariadb_repo_setup\n`;
+        // finalCmd += `    chmod +x /tmp/mariadb_repo_setup && /tmp/mariadb_repo_setup\n`;
+        // finalCmd += `    apt update -qq && apt install -y maxscale\n`;
+        finalCmd += `    apt install -y curl\n`;
+        finalCmd += `    curl -LsS https://r.mariadb.com/downloads/mariadb_repo_setup | bash\n`;
+        finalCmd += `    apt install -y maxscale-trial\n`;
         finalCmd += `)\n\n`;
     }
 
-    const maxscaleCnf = await grabMaxScaleConfig({ maxscale_service, deployment });
+    const maxscaleCnf = await grabMaxScaleConfig({
+        maxscale_service,
+        deployment,
+    });
 
     if (maxscaleCnf) {
         finalCmd += `cat << 'MAXSCALEEOF' > /etc/maxscale.cnf\n`;

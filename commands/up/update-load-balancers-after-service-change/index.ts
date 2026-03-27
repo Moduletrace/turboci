@@ -29,20 +29,13 @@ export default async function ({
 
         // Resolve target service names for each proxy type
         const proxyTargets =
-            load_balancer.type === "maxscale"
-                ? load_balancer.maxscale?.target_services
-                : load_balancer.type === "haproxy"
-                  ? load_balancer.haproxy?.target_services
-                  : load_balancer.type === "proxysql"
-                    ? load_balancer.proxysql?.target_services
-                    : load_balancer.target_services;
+            load_balancer.type === "haproxy"
+                ? load_balancer.haproxy?.target_services
+                : load_balancer.type === "proxysql"
+                  ? load_balancer.proxysql?.target_services
+                  : load_balancer.target_services;
 
-        const proxyServiceTypes = [
-            "load_balancer",
-            "maxscale",
-            "haproxy",
-            "proxysql",
-        ];
+        const proxyServiceTypes = ["load_balancer", "haproxy", "proxysql"];
 
         const loadBalancerServices = services.filter(
             (srv) =>
@@ -78,15 +71,6 @@ export default async function ({
         // Dispatch to the correct prep function based on proxy type
         const newProxyConfig = await (async () => {
             switch (load_balancer.type) {
-                case "maxscale":
-                    return await grabMaxScaleServerPrepSH({
-                        deployment,
-                        private_server_ips,
-                        maxscale_service: load_balancer,
-                        skip_init: true,
-                        bun: true,
-                    });
-
                 case "haproxy":
                     return await grabHAProxyServerPrepSH({
                         deployment,

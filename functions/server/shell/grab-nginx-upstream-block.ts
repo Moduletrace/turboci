@@ -14,7 +14,7 @@ export default async function grabNginxUpstreamBlock(params: Params) {
 
     const { upstream_name } = grabUpstreamNames({
         service_name: service.service_name,
-        port: service.port,
+        port: service.port || 80,
     });
 
     let cnf = "";

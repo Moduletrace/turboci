@@ -14,6 +14,7 @@ import init from "./commands/init";
 import ora, { type Ora } from "ora";
 import grabActiveConfig from "./utils/grab-active-config";
 import control from "./commands/control";
+import info from "./commands/info";
 
 /**
  * # Declare Global Variables
@@ -63,6 +64,7 @@ program.addCommand(up());
 program.addCommand(down());
 program.addCommand(init());
 program.addCommand(control());
+program.addCommand(info());
 
 /**
  * # Handle Unavailable Commands

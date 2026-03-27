@@ -32,20 +32,11 @@ export default async function ({
             // Their daemons (nginx, maxscale, haproxy, proxysql) are started
             // there too — nothing to do in the run phase.
             case "load_balancer":
-            case "maxscale":
             case "haproxy":
             case "proxysql":
                 break;
 
-            // Database server types (mariadb-galera, postgres, mysql) behave
-            // like "default": run whatever the user defines in run.preflight /
-            // run.start / run.postflight. The prep phase wrote helper scripts
-            // (tci-galera-start.sh, tci-postgres-start.sh, tci-mysql-start.sh)
-            // that users can call from those scripts.
-            case "mariadb-galera":
-            case "postgres":
-            case "mysql":
-            case "default":
+            default:
                 const defaultCmds =
                     paradigm == "preflight"
                         ? service.run?.preflight?.cmds
@@ -122,9 +113,6 @@ export default async function ({
                 }
 
                 break;
-
-            default:
-                break;
         }
 
         allCommands[paradigm] = {
@@ -191,7 +179,9 @@ export default async function ({
         healthcheckCmd += `healthcheck_max_attempts=5\n`;
         healthcheckCmd += `healthcheck_attempt=1\n`;
         healthcheckCmd += `while [ $healthcheck_attempt -le $healthcheck_max_attempts ]; do\n`;
-        healthcheckCmd += `    if ${service.healthcheck.cmd} | grep "${service.healthcheck.test}"; then\n`;
+        healthcheckCmd += `    healthcheck=$(${service.healthcheck.cmd})\n`;
+        // healthcheckCmd += `    echo "$healthcheck"\n`;
+        healthcheckCmd += `    if echo "$healthcheck" | grep "${service.healthcheck.test}"; then\n`;
         healthcheckCmd += `        echo "Healthcheck succeeded."\n`;
         healthcheckCmd += `        exit 0\n`;
         healthcheckCmd += `    else\n`;

@@ -36,16 +36,6 @@ export default async function (
                     bun: true,
                 });
 
-            case "maxscale":
-                return await grabMaxScaleServerPrepSH({
-                    private_server_ips: serversPrivateIPs.map(
-                        (ip) => `"${ip}"`,
-                    ),
-                    maxscale_service: service,
-                    deployment,
-                    bun: true,
-                });
-
             case "haproxy":
                 return await grabHAProxyServerPrepSH({
                     private_server_ips: serversPrivateIPs.map(

@@ -12,11 +12,15 @@ import { AppNames } from "@/utils/app-names";
 import type {
     CommanderDefaultOptions,
     DeploymentAndServicesToUpdate,
+    TCIGlobalConfig,
 } from "@/types";
 import checkSkippedService from "@/utils/check-skipped-service";
 import grabSSHRelayServer from "@/functions/server/ssh_relay/grab-ssh-relay-server";
 import validateDeploymentSyntax from "./setup/utils/validate-deployment-syntax";
 import preDeployment from "@/utils/pre-deployment";
+import loadEnvs from "@/utils/load-envs";
+import loadEnvFile from "@/utils/load-env-file";
+import yamlReplaceEnvs from "@/utils/yaml-replace-envs";
 
 function collectSkippedServices(value: string, previous: string[]) {
     return previous.concat([value]);
@@ -62,9 +66,8 @@ export default function () {
 
             for (let i = 0; i < deployments.length; i++) {
                 const deployment = deployments[i];
-                const services = deployment?.services;
 
-                if (!deployment || !services) continue;
+                if (!deployment) continue;
 
                 global.CURRENT_DEPLOYMENT_INDEX = i;
                 global.NEW_SERVERS = [];
@@ -73,8 +76,24 @@ export default function () {
                     await preDeployment({ deployment });
                 }
 
+                if (deployment.env) {
+                    loadEnvs({ envs: deployment.env });
+                }
+
+                if (deployment.env_file) {
+                    loadEnvFile({ file_path: deployment.env_file });
+                }
+
+                const final_deployment = JSON.parse(
+                    yamlReplaceEnvs(JSON.stringify(deployment)),
+                ) as TCIGlobalConfig;
+
+                const services = final_deployment?.services;
+
+                if (!services) continue;
+
                 const relayServer = await grabSSHRelayServer({
-                    deployment,
+                    deployment: final_deployment,
                     init: true,
                 });
 
@@ -82,20 +101,19 @@ export default function () {
 
                 console.log(
                     `Handling ${chalk.green(
-                        chalk.bold(deployment.deployment_name),
+                        chalk.bold(final_deployment.deployment_name),
                     )} deployment ...`,
                 );
 
                 const load_balancers = services.filter(
                     (s) =>
                         s.type === "load_balancer" ||
-                        s.type === "maxscale" ||
                         s.type === "haproxy" ||
                         s.type === "proxysql",
                 );
 
                 deployments_and_services_to_update[i] = {
-                    deployment,
+                    deployment: final_deployment,
                     services: [],
                     skipped_services: [],
                 };
@@ -105,7 +123,7 @@ export default function () {
                     if (!service) continue;
 
                     const is_service_skipped = checkSkippedService({
-                        deployment,
+                        deployment: final_deployment,
                         service,
                         options,
                     });
@@ -129,22 +147,20 @@ export default function () {
 
                     global.CURRENT_SERVICE_INDEX = s;
 
-                    await setup({ deployment, service });
-                    await prepare({ deployment, service });
-                    await run({ deployment, service });
+                    await setup({ deployment: final_deployment, service });
+                    await prepare({ deployment: final_deployment, service });
+                    await run({ deployment: final_deployment, service });
 
                     const nextService = services[s + 1];
                     const isNextServiceLoadBalancer =
                         nextService &&
                         (nextService.type === "load_balancer" ||
-                            nextService.type === "maxscale" ||
                             nextService.type === "haproxy" ||
                             nextService.type === "proxysql");
 
                     if (
                         load_balancers?.[0] &&
                         service.type !== "load_balancer" &&
-                        service.type !== "maxscale" &&
                         service.type !== "haproxy" &&
                         service.type !== "proxysql" &&
                         !isNextServiceLoadBalancer &&
@@ -157,13 +173,11 @@ export default function () {
                         const isServiceAttachedToALoadBalancer =
                             load_balancers.find((lb) => {
                                 const targets =
-                                    lb.type === "maxscale"
-                                        ? lb.maxscale?.target_services
-                                        : lb.type === "haproxy"
-                                          ? lb.haproxy?.target_services
-                                          : lb.type === "proxysql"
-                                            ? lb.proxysql?.target_services
-                                            : lb.target_services;
+                                    lb.type === "haproxy"
+                                        ? lb.haproxy?.target_services
+                                        : lb.type === "proxysql"
+                                          ? lb.proxysql?.target_services
+                                          : lb.target_services;
                                 return Boolean(
                                     targets?.find(
                                         (trgSrv) =>
@@ -179,7 +193,7 @@ export default function () {
                         }
 
                         await updateLoadBalancersAfterServiceChange({
-                            deployment,
+                            deployment: final_deployment,
                             load_balancers,
                             service,
                             services,
@@ -187,7 +201,7 @@ export default function () {
 
                         global.UPDATE_LOAD_BALANCERS = false;
                         global.UPDATED_LOAD_BALANCERS[
-                            deployment.deployment_name
+                            final_deployment.deployment_name
                         ] = true;
                     }
                 }

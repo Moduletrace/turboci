@@ -14,6 +14,8 @@ import grabLoadBalancerTargetServices from "./grab-load-balancer-target-services
 import grabAppNames from "./grab-app-names";
 import grabServerInstanceName from "./grab-server-instance-name";
 import AppData from "@/data/app-data";
+import loadEnvs from "./load-envs";
+import yamlReplaceEnvs from "./yaml-replace-envs";
 
 type Params = {
     options: TCICommandOptions;
@@ -36,6 +38,20 @@ export default function grabConfig(
         | undefined;
 
     const final_config = configTSObj || configObj;
+
+    if (!final_config) {
+        console.error(`Couldn't grab config`);
+        process.exit(1);
+    }
+
+    const config_envs =
+        typeof final_config == "object" && !Array.isArray(final_config)
+            ? final_config.envs
+            : undefined;
+
+    if (config_envs) {
+        loadEnvs({ envs: config_envs });
+    }
 
     const config_deployments = Array.isArray(final_config)
         ? final_config

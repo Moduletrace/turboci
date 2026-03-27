@@ -7,6 +7,7 @@ import mapDirsPrompt from "./map-dirs";
 import dependenciesPrompt from "./dependencies";
 import type { HetznerImages } from "@/platforms/hetzner/types/images";
 import hetznerGrabServerType from "@/platforms/hetzner/utils/grab-server-type";
+import AppData from "@/data/app-data";
 
 export default async function servicePrompt(deployment: TCIConfigDeployment) {
     let newDeployment = _.cloneDeep(deployment);
@@ -127,7 +128,9 @@ export default async function servicePrompt(deployment: TCIConfigDeployment) {
             default: (answers: any) => {
                 const srv = newDeployment.services[grabServiceName(answers)];
                 const finalOS = (srv?.os ||
-                    "debian-11") as (typeof HetznerImages)[number]["name"];
+                    AppData[
+                        "DefaultHetznerOS"
+                    ]) as (typeof HetznerImages)[number]["name"];
                 return finalOS;
             },
             when: (answers) => {

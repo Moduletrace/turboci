@@ -15,6 +15,7 @@ import relayExecSSH from "@/utils/ssh/relay-exec-ssh";
 import { execSync } from "child_process";
 import hetznerNATRelayServerInitSH from "@/platforms/hetzner/utils/grab-nat-relay-server-init-sh";
 import execSSH from "@/utils/ssh/exec-ssh";
+import AppData from "@/data/app-data";
 
 type Params = {
     deployment: Omit<TCIConfigDeployment, "services">;
@@ -106,7 +107,7 @@ export default async function ({
             [AppNames["TurboCILabelNameKey"]]: deployment.deployment_name,
             [AppNames["TurboCILabelServiceNameKey"]]: relayServerLabelName,
         },
-        image: "debian-11",
+        image: AppData["DefaultHetznerOS"] as any,
         location: deployment.location as any,
         networks: [deploymentNetwork.id],
         firewalls: [

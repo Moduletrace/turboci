@@ -26,7 +26,7 @@ export default function grabNGINXConfigLocation({
 }: Params) {
     const { upstream_name } = grabUpstreamNames({
         service_name,
-        port: lb_target_service.port,
+        port: lb_target_service.port || 80,
     });
 
     let loc = "\n";

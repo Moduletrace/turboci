@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../../../schema/turboci.schema.json
+# yaml-language-server: $schema=../../../schema/turboci.schema.json
 
 deployments:
     - deployment_name: mariadb_galera_maxscale
@@ -6,12 +6,11 @@ deployments:
       location: ash
       description: >
           MariaDB Galera multi-primary cluster (3 nodes) fronted by MaxScale.
-          MaxScale uses galeramon to monitor the cluster health and
-          readwritesplit to route writes to the elected primary while
-          distributing reads across the remaining nodes.
+          MaxScale uses galeramon to monitor cluster health and readwritesplit
+          to route writes to the primary while distributing reads across all nodes.
 
-          MaxScale supports MariaDB (all versions), MariaDB Galera, and
-          MySQL 5.5+. It does NOT support PostgreSQL.
+          MaxScale supports MariaDB (all versions), MariaDB Galera, and MySQL 5.5+.
+          It does NOT support PostgreSQL — use HAProxy for that.
       services:
           db:
               type: mariadb-galera
@@ -30,23 +29,19 @@ deployments:
                         password: "${DB_APP_PASSWORD}"
                         charset: utf8mb4
                         collation: utf8mb4_unicode_ci
+              # TurboCI installs MariaDB + Galera, writes galera.cnf with all node
+              # IPs, and generates /usr/local/bin/tci-galera-start.sh.
+              # That script bootstraps the first node and joins the rest.
               run:
-                  preflight:
-                      cmds:
-                          - apt-get update -qq
-                          - apt-get install -y mariadb-server mariadb-backup galera-4
-                          - systemctl stop mariadb || true
-                          # Write my.cnf with Galera settings — substitute IPs at runtime
-                          - chmod +x /app/scripts/configure-galera.sh && /app/scripts/configure-galera.sh
                   start:
                       cmds:
-                          # First node: bootstrap the cluster
-                          # Subsequent nodes: join the existing cluster
-                          - /app/scripts/start-galera.sh
+                          - /usr/local/bin/tci-galera-start.sh
+                  postflight:
+                      cmds:
+                          # Runs CREATE DATABASE / CREATE USER on the bootstrap node only
+                          - /usr/local/bin/tci-galera-init.sh
               healthcheck:
-                  cmd: >
-                      mysql -u root -p"${DB_ROOT_PASSWORD}" -e
-                      "SHOW STATUS LIKE 'wsrep_cluster_size';" | grep wsrep_cluster_size
+                  cmd: mysql -u root -p"${DB_ROOT_PASSWORD}" -e "SHOW STATUS LIKE 'wsrep_cluster_size';"
                   test: "3"
               logs:
                   - journalctl -fu mariadb
@@ -68,25 +63,17 @@ deployments:
                   admin_password: "${MAXSCALE_ADMIN_PASSWORD}"
                   user: maxscale_monitor
                   password: "${MAXSCALE_MONITOR_PASSWORD}"
-              run:
-                  preflight:
-                      cmds:
-                          - apt-get update -qq
-                          - apt-get install -y maxscale
-                          # Render maxscale.cnf from template (substitutes backend IPs)
-                          - chmod +x /app/scripts/configure-maxscale.sh && /app/scripts/configure-maxscale.sh
-                  start:
-                      cmds:
-                          - systemctl enable maxscale
-                          - systemctl start maxscale
-              healthcheck:
-                  cmd: maxctrl list servers
-                  test: "Master"
+              # No run scripts needed — TurboCI installs MaxScale, writes
+              # /etc/maxscale.cnf with the discovered backend IPs, and starts
+              # the service during the prepare phase.
+              #   healthcheck:
+              #       cmd: maxctrl list servers
+              #       test: "Master"
               logs:
                   - journalctl -fu maxscale
 
       env:
-          DB_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
-          DB_APP_PASSWORD: "${DB_APP_PASSWORD}"
-          MAXSCALE_ADMIN_PASSWORD: "${MAXSCALE_ADMIN_PASSWORD}"
-          MAXSCALE_MONITOR_PASSWORD: "${MAXSCALE_MONITOR_PASSWORD}"
+          DB_ROOT_PASSWORD: "changeme"
+          DB_APP_PASSWORD: "changeme"
+          MAXSCALE_ADMIN_PASSWORD: "changeme"
+          MAXSCALE_MONITOR_PASSWORD: "changeme"

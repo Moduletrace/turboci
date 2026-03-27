@@ -1,7 +1,4 @@
-import type {
-    ParsedDeploymentServiceConfig,
-    TCIGlobalConfig,
-} from "@/types";
+import type { ParsedDeploymentServiceConfig, TCIGlobalConfig } from "@/types";
 import bunGrabPrivateIPsBulkScripts from "@/utils/bun-scripts/bun-grab-private-ips-bulk-scripts";
 import grabPrivateIPsBulkScripts from "@/utils/ssh/shell-scripts/grab-private-ips-bulk-scripts";
 import grabDefaultServicePrepSH from "./grab-default-service-prep-sh";
@@ -52,7 +49,10 @@ export default async function grabMariadbGaleraServerPrepSH({
         .map((ip) => ip.replace(/"/g, ""))
         .join(",");
 
-    const defaultPrepCmd = await grabDefaultServicePrepSH({ service, deployment });
+    const defaultPrepCmd = await grabDefaultServicePrepSH({
+        service,
+        deployment,
+    });
 
     let finalCmd = defaultPrepCmd;
 
@@ -125,14 +125,14 @@ export default async function grabMariadbGaleraServerPrepSH({
             const charset = db.charset ?? "utf8mb4";
             const collation = db.collation ?? "utf8mb4_unicode_ci";
             initSqlLines.push(
-                `CREATE DATABASE IF NOT EXISTS \`${db.name}\` CHARACTER SET ${charset} COLLATE ${collation};`,
+                `CREATE DATABASE IF NOT EXISTS \\\`${db.name}\\\` CHARACTER SET ${charset} COLLATE ${collation};`,
             );
             if (db.user && db.password) {
                 initSqlLines.push(
                     `CREATE USER IF NOT EXISTS '${db.user}'@'%' IDENTIFIED BY '${db.password}';`,
                 );
                 initSqlLines.push(
-                    `GRANT ALL PRIVILEGES ON \`${db.name}\`.* TO '${db.user}'@'%';`,
+                    `GRANT ALL PRIVILEGES ON \\\`${db.name}\\\`.* TO '${db.user}'@'%';`,
                 );
             }
         }

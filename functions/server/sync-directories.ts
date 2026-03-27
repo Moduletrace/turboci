@@ -100,8 +100,9 @@ export default async function syncDirectories({
                 relay_ignore: dirMapping.relay_ignore,
             });
 
-            if (!sync) {
+            if (!sync.success) {
                 console.error(`Sync mapping \`${src}\` to \`${dst}\` failed!`);
+                console.error(sync);
                 process.exit(1);
             }
         }

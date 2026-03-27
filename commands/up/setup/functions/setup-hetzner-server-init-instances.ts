@@ -2,6 +2,7 @@ import Hetzner from "../../../../platforms/hetzner";
 import type {
     TCIConfigDeployment,
     TCIConfigServiceConfig,
+    TCIServiceTypes,
 } from "../../../../types";
 import { AppNames } from "../../../../utils/app-names";
 import grabAppNames from "../../../../utils/grab-app-names";
@@ -12,6 +13,7 @@ import type { HETZNER_NETWORK } from "@/platforms/hetzner/types";
 import AppData from "@/data/app-data";
 import type { HetznerImages } from "@/platforms/hetzner/types/images";
 import hetznerGrabServerType from "@/platforms/hetzner/utils/grab-server-type";
+import isServiceLoadBalancerType from "../utils/is-service-load-balancer-type";
 
 type Params = {
     service: TCIConfigServiceConfig;
@@ -99,7 +101,9 @@ export default async function ({
                         const existingServer = existingServerRes.servers?.[0];
 
                         const finalOS = (service.os ||
-                            "debian-11") as (typeof HetznerImages)[number]["name"];
+                            AppData[
+                                "DefaultHetznerOS"
+                            ]) as (typeof HetznerImages)[number]["name"];
 
                         if (
                             existingServer?.id &&
@@ -141,7 +145,7 @@ export default async function ({
                                   ]
                                 : undefined,
                             public_net:
-                                service.type == "load_balancer" ||
+                                isServiceLoadBalancerType({ service }) ||
                                 service.enable_public_ip
                                     ? undefined
                                     : {

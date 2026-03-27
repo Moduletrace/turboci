@@ -59,7 +59,7 @@ export type TCIConfig =
     | TCIConfigDeployment[]
     | {
           deployments: TCIConfigDeployment[];
-          envs?: string[];
+          envs?: { [k: string]: string };
       };
 
 /**
@@ -129,6 +129,7 @@ export type TCIConfigService = {
  * - `haproxy` — HAProxy TCP/HTTP proxy (works with any backend: postgres, mysql, mariadb, redis, etc.)
  * - `mysql` — MySQL server (standalone or with primary/replica replication)
  * - `proxysql` — ProxySQL connection proxy for MySQL and MariaDB (not PostgreSQL)
+ * - `spec` — Custom config based on a remote yaml file
  */
 export const TCIServiceTypes = [
     {
@@ -142,10 +143,6 @@ export const TCIServiceTypes = [
     {
         title: "Load Balancer",
         value: "load_balancer",
-    },
-    {
-        title: "MaxScale (MariaDB/MySQL Proxy)",
-        value: "maxscale",
     },
     {
         title: "MariaDB Galera Cluster",
@@ -166,6 +163,10 @@ export const TCIServiceTypes = [
     {
         title: "ProxySQL (MySQL/MariaDB Proxy)",
         value: "proxysql",
+    },
+    {
+        title: "Custom config based on a remote yaml file",
+        value: "spec",
     },
 ] as const;
 
@@ -238,7 +239,15 @@ export const TCIContainerRegistryParadigms = [
 export type TCIConfigServiceConfig = {
     /** Deployment strategy. Defaults to `"default"` (bare-VM + scripts). */
     type?: (typeof TCIServiceTypes)[number]["value"];
-    /** OS image slug to use when creating servers for this service. */
+    /**
+     * Yaml file url which defines the spec, used only when `type` is
+     * set to `spec`. This can also be a path to a local file; absolute
+     * and relative paths work the same.
+     */
+    spec_url?: string;
+    /**
+     * OS image slug to use when creating servers for this service.
+     */
     os?: string;
     /** Hardware/instance type slug, e.g. `"cpx21"` (Hetzner) or `"t3.small"` (AWS). */
     server_type?: string;
@@ -335,6 +344,21 @@ export type TCIConfigServiceConfig = {
     logs?: TCIConfigServiceConfigLog[];
     /** Git repository source(s) to clone/pull onto target servers. */
     git?: TCIConfigServiceConfigGit | TCIConfigServiceConfigGit[];
+};
+
+export type TCIConfigSpec = {
+    /**
+     * Name of the Config spec
+     */
+    name: string;
+    /**
+     * Initialization Script to run
+     */
+    init?: string;
+    /**
+     * Shell script endpoint
+     */
+    init_file?: string;
 };
 
 /** Configuration for pulling a git repository onto target servers. */
@@ -907,7 +931,7 @@ export type TCIConfigServiceConfigLBTarget = {
     /** Name of the service in the same deployment to proxy traffic to. */
     service_name: string;
     /** Port the target service listens on. */
-    port: number;
+    port?: number;
     /** NGINX upstream weight for weighted round-robin load distribution. */
     weight?: number;
     /** If `true`, this target is used as a fallback when all primary servers are down. */
@@ -1013,6 +1037,7 @@ export type SSHRelayServerReturn = {
 export type NormalizedServerObject = {
     public_ip?: string;
     private_ip?: string;
+    service?: ParsedDeploymentServiceConfig;
 };
 
 /** Parameters for rsync-based directory synchronisation to remote servers. */

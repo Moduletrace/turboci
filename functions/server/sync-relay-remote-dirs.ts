@@ -3,6 +3,7 @@ import path from "path";
 import { statSync } from "fs";
 import grabSSHPrefix from "@/utils/ssh/grab-ssh-prefix";
 import type {
+    ResponseObject,
     SyncRemoteDirsParams,
     TCIConfig,
     TCIConfigDeployment,
@@ -30,7 +31,7 @@ export default async function syncRelayRemoteDirs({
 }: Omit<SyncRemoteDirsParams, "deployment"> & {
     deployment: Omit<TCIConfigDeployment, "services">;
     ips?: string[];
-}) {
+}): Promise<ResponseObject> {
     const { relayServerRsyncDir, relayServerSshPrivateKeyFile } =
         grabDirNames();
 
@@ -128,27 +129,42 @@ export default async function syncRelayRemoteDirs({
                 private_server_ips: ips,
                 parrallel: true,
                 relay_ignore,
+                local_src: src,
             });
 
             const syncIPs = await relayExecSSH({
                 cmd: finalCmdBun,
                 deployment,
                 bun: true,
+                debug,
             });
 
-            if (!syncIPs) return false;
+            if (!syncIPs) {
+                return {
+                    success: false,
+                    msg: `No Sync IPs => ${syncIPs}`,
+                };
+            }
         } else if (ip) {
             const finalCmd = `${relaySSHPrefix} mkdir -p ${dst_dir}\n${syncRelayToPrivateCmd} root@${ip}:${dst}\necho "Sync Success!"`;
 
             const syncIP = await relayExecSSH({
                 cmd: finalCmd,
                 deployment,
+                debug,
             });
 
-            if (!syncIP) return false;
+            if (!syncIP) {
+                return {
+                    success: false,
+                    msg: `No Sync IP => ${syncIP}`,
+                };
+            }
         }
 
-        return true;
+        return {
+            success: true,
+        };
     } catch (error: any) {
         console.log(`RSYNC ERROR: ${error.message}`);
         process.exit(1);

@@ -8,6 +8,10 @@ type Params = {
     private_server_ips: string[];
     parrallel?: boolean;
     /**
+     * Source on the host machine
+     */
+    local_src?: string;
+    /**
      * Source on the relay server
      */
     src: string;
@@ -24,15 +28,14 @@ export default function bunGrabBulkSyncScripts({
     src,
     dst,
     relay_ignore,
+    local_src,
 }: Params) {
     const { relayServerSshPrivateKeyFile } = grabDirNames();
 
-    // const srcStats = statSync(src);
-    // const isSrcFile = srcStats.isFile();
+    const srcStats = local_src ? statSync(local_src) : undefined;
+    const isSrcFile = srcStats?.isFile();
 
-    const dst_dir = src.match(/\.{1,5}$/)
-        ? path.dirname(dst)
-        : path.normalize(dst);
+    const dst_dir = isSrcFile ? path.dirname(dst) : path.normalize(dst);
 
     let bunCmd = "";
 

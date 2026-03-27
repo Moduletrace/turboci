@@ -95,10 +95,10 @@ export function turboCiDepsCmds({ dependency, os }: CmdParams) {
                 let nodeInstall = `if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then\n`;
                 // nodeInstall += `    apt-get update -y\n`;
                 // nodeInstall += `    apt-get install -y curl ca-certificates gnupg\n`;
-                // nodeInstall += `    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/nodesource.gpg\n`;
+                // nodeInstall += `    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /usr/share/keyrings/nodesource.gpg\n`;
                 // nodeInstall += `    VERSION=node_22.x\n`;
                 // nodeInstall += `    DISTRO="\\$(lsb_release -s -c)"\n`;
-                // nodeInstall += `    echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/\\$VERSION \\$DISTRO main" | sudo tee /etc/apt/sources.list.d/nodesource.list\n`;
+                // nodeInstall += `    echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/\\$VERSION \\$DISTRO main" | tee /etc/apt/sources.list.d/nodesource.list\n`;
                 // nodeInstall += `    apt-get update -y\n`;
                 // nodeInstall += `    apt-get install -y nodejs npm\n`;
 

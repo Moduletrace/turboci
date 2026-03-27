@@ -2,10 +2,12 @@ import { execSync } from "child_process";
 import path from "path";
 import { statSync } from "fs";
 import grabSSHPrefix from "@/utils/ssh/grab-ssh-prefix";
-import type { SyncRemoteDirsParams } from "@/types";
+import type { ResponseObject, SyncRemoteDirsParams } from "@/types";
 import syncRelayRemoteDirs from "./sync-relay-remote-dirs";
 
-export default async function syncRemoteDirs(params: SyncRemoteDirsParams) {
+export default async function syncRemoteDirs(
+    params: SyncRemoteDirsParams,
+): Promise<ResponseObject> {
     const {
         user = "root",
         ip,
@@ -95,9 +97,14 @@ export default async function syncRemoteDirs(params: SyncRemoteDirsParams) {
             }
         }
 
-        return true;
+        return {
+            success: true,
+        };
     } catch (error: any) {
-        console.log(`RSYNC ERROR: ${error.message}`);
-        return false;
+        console.error(`RSYNC ERROR: ${error.message}`);
+        return {
+            success: false,
+            msg: `RSYNC ERROR: ${error.message}`,
+        };
     }
 }

@@ -1061,6 +1061,11 @@
                                     "title": "server_type",
                                     "type": "string"
                                 },
+                                "spec_url": {
+                                    "description": "Yaml file url which defines the spec, used only when `type` is\nset to `spec`. This can also be a path to a local file; absolute\nand relative paths work the same.",
+                                    "title": "spec_url",
+                                    "type": "string"
+                                },
                                 "ssl": {
                                     "description": "SSL/TLS configuration. Triggers Certbot certificate provisioning.",
                                     "properties": {
@@ -1287,7 +1292,6 @@
                                             }
                                         },
                                         "required": [
-                                            "port",
                                             "service_name"
                                         ],
                                         "type": "object"
@@ -1303,10 +1307,10 @@
                                         "haproxy",
                                         "load_balancer",
                                         "mariadb-galera",
-                                        "maxscale",
                                         "mysql",
                                         "postgres",
-                                        "proxysql"
+                                        "proxysql",
+                                        "spec"
                                     ],
                                     "title": "type",
                                     "type": "string"
@@ -2390,6 +2394,11 @@
                                             "title": "server_type",
                                             "type": "string"
                                         },
+                                        "spec_url": {
+                                            "description": "Yaml file url which defines the spec, used only when `type` is\nset to `spec`. This can also be a path to a local file; absolute\nand relative paths work the same.",
+                                            "title": "spec_url",
+                                            "type": "string"
+                                        },
                                         "ssl": {
                                             "description": "SSL/TLS configuration. Triggers Certbot certificate provisioning.",
                                             "properties": {
@@ -2616,7 +2625,6 @@
                                                     }
                                                 },
                                                 "required": [
-                                                    "port",
                                                     "service_name"
                                                 ],
                                                 "type": "object"
@@ -2632,10 +2640,10 @@
                                                 "haproxy",
                                                 "load_balancer",
                                                 "mariadb-galera",
-                                                "maxscale",
                                                 "mysql",
                                                 "postgres",
-                                                "proxysql"
+                                                "proxysql",
+                                                "spec"
                                             ],
                                             "title": "type",
                                             "type": "string"
@@ -2659,11 +2667,11 @@
                     "type": "array"
                 },
                 "envs": {
-                    "items": {
+                    "additionalProperties": {
                         "type": "string"
                     },
                     "title": "envs",
-                    "type": "array"
+                    "type": "object"
                 }
             },
             "required": [

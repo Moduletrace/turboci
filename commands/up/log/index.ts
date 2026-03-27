@@ -36,7 +36,7 @@ export default async function () {
                 const loadBalancer = loadBalancers[k];
                 if (!loadBalancer?.public_ip) continue;
                 console.log(
-                    `   - ${chalk.blue(chalk.bold(loadBalancer?.public_ip))}`,
+                    `   - ${loadBalancer.service?.service_name}[${chalk.magenta(chalk.bold(loadBalancer.service?.type))}]: ${chalk.blue(chalk.bold(loadBalancer?.public_ip))}`,
                 );
             }
         }

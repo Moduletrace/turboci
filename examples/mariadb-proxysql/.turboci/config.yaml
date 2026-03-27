@@ -1,55 +1,44 @@
 # yaml-language-server: $schema=../../../schema/turboci.schema.json
 
 deployments:
-    - deployment_name: mysql_proxysql
+    - deployment_name: mariadb_galera_proxysql
       provider: hetzner
       location: ash
       description: >
-          MySQL 8 with primary/replica replication (1 primary + 2 replicas)
-          fronted by ProxySQL for connection multiplexing and read/write splitting.
-
-          ProxySQL routes writes (INSERT, UPDATE, DELETE, DDL) and SELECT FOR UPDATE
-          to the primary (hostgroup 10) and all other SELECTs to replicas
-          (hostgroup 20) using query digest rules.
-
-          ProxySQL supports MySQL 5.5+ and MariaDB 5.5+. It does NOT support
-          PostgreSQL — use HAProxy for that. MaxScale is an alternative that
-          also supports MySQL 5.5+ and all MariaDB versions.
+          MariaDB Galera multi-primary cluster (3 nodes) fronted by proxysql.
       services:
           db:
-              type: mysql
+              type: mariadb-galera
               instances: 3
               clusters: 1
-              server_type: cpx21
-              mysql:
+              mariadb_galera:
+                  cluster_name: turboci_galera
+                  sst_method: mariabackup
+                  root_password: "${DB_ROOT_PASSWORD}"
                   port: 3306
-                  root_password: "${MYSQL_ROOT_PASSWORD}"
                   bind_address: "0.0.0.0"
-                  max_connections: 500
                   databases:
                       - name: myapp
                         user: myapp_user
-                        password: "${MYSQL_APP_PASSWORD}"
+                        password: "${DB_APP_PASSWORD}"
                         charset: utf8mb4
                         collation: utf8mb4_unicode_ci
-                  replication:
-                      enabled: true
-                      user: replicator
-                      password: "${MYSQL_REPL_PASSWORD}"
-              # TurboCI installs MySQL, writes tci-replication.cnf (server-id
-              # auto-detected per node), and generates
-              # /usr/local/bin/tci-mysql-start.sh. That script starts the
-              # primary, creates users/databases, and configures CHANGE
-              # REPLICATION SOURCE TO + START REPLICA on all other nodes.
+              # TurboCI installs MariaDB + Galera, writes galera.cnf with all node
+              # IPs, and generates /usr/local/bin/tci-galera-start.sh.
+              # That script bootstraps the first node and joins the rest.
               run:
                   start:
                       cmds:
-                          - /usr/local/bin/tci-mysql-start.sh
+                          - /usr/local/bin/tci-galera-start.sh
+                  postflight:
+                      cmds:
+                          # Runs CREATE DATABASE / CREATE USER on the bootstrap node only
+                          - /usr/local/bin/tci-galera-init.sh
               healthcheck:
-                  cmd: mysqladmin -u root -p"${MYSQL_ROOT_PASSWORD}" ping
-                  test: "mysqld is alive"
+                  cmd: mysql -u root -p"${DB_ROOT_PASSWORD}" -e "SHOW STATUS LIKE 'wsrep_cluster_size';"
+                  test: "3"
               logs:
-                  - journalctl -fu mysql
+                  - journalctl -fu mariadb
 
           proxy:
               type: proxysql

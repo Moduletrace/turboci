@@ -18,7 +18,11 @@ const AppData = {
     RelayAdminWebPort: 3772,
     RelayAdminWebsocketPort: 3773,
 
+    /**
+     * Hetzner
+     */
     HetznerNamesMaxLength: 63,
+    DefaultHetznerOS: "debian-12",
 } as const;
 
 export default AppData;
