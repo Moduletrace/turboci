@@ -12,18 +12,20 @@ export const HETZNER_API_PATHS = [
     "firewalls",
     "ssh_keys",
     "primary_ips",
+    "volumes",
 ] as const;
 
 export const HETZNER_API_ACTIONS = ["add_route"] as const;
 
 export type HETZNER_API_RESPONSE_DATA<
-    T extends { [key: string]: any } = { [key: string]: any }
+    T extends { [key: string]: any } = { [key: string]: any },
 > = {
     [key in (typeof HETZNER_API_PATHS)[number]]?: T[];
 } & {
     network?: HETZNER_NETWORK | null;
     ssh_key?: HETZNER_SSH_KEY | null;
     firewall?: HETZNER_FIREWALL | null;
+    volume?: HETZNER_VOLUME | null;
     server?: T;
     action?: HETZNER_ACTION_RES;
     primary_ip?: HETZNER_PRIMARY_IPS;
@@ -543,6 +545,8 @@ export type HETZNER_SSH_KEY = {
     created: string;
 };
 
+export const HetznerVolumeFormats = ["xfs", "ext4"] as const;
+
 export type HETZNER_PRIMARY_IPS = {
     assignee_id: number;
     assignee_type: "server";
@@ -557,4 +561,20 @@ export type HETZNER_PRIMARY_IPS = {
     name: string;
     protection: { [k: string]: string };
     type: "ipv4";
+};
+
+export type HETZNER_VOLUME = {
+    id: number;
+    created: string;
+    name: string;
+    server?: number | null;
+    location: HETZNER_LOCATION;
+    size: number;
+    linux_device: string;
+    protection: {
+        delete: false;
+    };
+    labels: Record<string, string>;
+    status: "available";
+    format: (typeof HetznerVolumeFormats)[number];
 };

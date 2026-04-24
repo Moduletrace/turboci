@@ -109,11 +109,7 @@ export default function grabConfig(
         for (let s = 0; s < newParsedDeployment.services.length; s++) {
             const service = newParsedDeployment.services[s];
 
-            const {
-                appSSHKeyName,
-                finalServiceName,
-                loadBalancerFirewallName,
-            } = grabAppNames({
+            const { finalServiceName } = grabAppNames({
                 name: deployment.deployment_name,
                 serviceName: service?.service_name,
                 deployment,

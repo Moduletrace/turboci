@@ -95,8 +95,9 @@ export default function bunGrabPrivateIPsBulkScripts({
     bunCmd += `    execCmd += \`TURBOCIEXEC\\n\`;\n`;
     bunCmd += `    try {\n`;
     bunCmd += `        const res = execSync(execCmd, { encoding: "utf-8" });\n`;
-    bunCmd += `        console.log(res);\n`;
+    bunCmd += `        console.log("Bun Bulk script RESULT:", res);\n`;
     bunCmd += `    } catch (error) {\n`;
+    bunCmd += `        console.log("Bun Bulk script ERROR:", error.message);\n`;
     bunCmd += `        process.exit(1);\n`;
     bunCmd += `    }\n`;
     bunCmd += `}\n`;

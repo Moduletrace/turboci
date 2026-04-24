@@ -90,6 +90,39 @@ export type TCIConfigDeployment = {
     /** Commands run once on the relay server before any service setup begins. */
     pre_deployment?: TCIRunObj;
     relay_server_options?: TCIConfigRelayServerOptions;
+    /**
+     * Additional Firewalls to setup
+     */
+    firewalls?: { [k: string]: TCIConfigFirewall };
+    /**
+     * Volumes to setup
+     */
+    volumes?: { [k: string]: TCIConfigVolume };
+};
+
+export type TCIConfigVolume = {
+    /**
+     * Size of the volume in gigabytes.
+     */
+    size: number;
+    /**
+     * Directory to mount the volume on the attached server.
+     */
+    mount_dir: string;
+    /**
+     * Volume Format. Defaults to `ext4`
+     */
+    format?: "xfs" | "ext4";
+};
+
+export type TCIConfigFirewall = {
+    ports: (string | number | TCIConfigFirewallPortConfig)[];
+    description?: string;
+};
+
+export type TCIConfigFirewallPortConfig = {
+    port: string | number;
+    allowed_sources?: string[];
 };
 
 /** Options for the relay server provisioned for each deployment. */
@@ -344,6 +377,16 @@ export type TCIConfigServiceConfig = {
     logs?: TCIConfigServiceConfigLog[];
     /** Git repository source(s) to clone/pull onto target servers. */
     git?: TCIConfigServiceConfigGit | TCIConfigServiceConfigGit[];
+    /**
+     * Firewalls to attach to this service. Must be defined in the top
+     * level deployment config first.
+     */
+    firewalls?: string[];
+    /**
+     * Volumes to attach to this service. Must be defined in the top
+     * level deployment config first.
+     */
+    volumes?: string[];
 };
 
 export type TCIConfigSpec = {
@@ -358,7 +401,7 @@ export type TCIConfigSpec = {
     /**
      * Shell script endpoint
      */
-    init_file?: string;
+    init_url?: string;
 };
 
 /** Configuration for pulling a git repository onto target servers. */

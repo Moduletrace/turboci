@@ -2,6 +2,8 @@ export const AppNames = {
     TurboCIDefaultDir: ".turboci",
     TurboCISSHKeyName: "turboci",
     TurboCILabelNameKey: "turboci_deployment_name",
+    TurboCILabelFirewallNameKey: "turboci_firewall_name",
+    TurboCILabelVolumeNameKey: "turboci_wolume_name",
     TurboCILabelServiceNameKey: "turboci_service_name",
     DefaultConfigFile: "config.yaml",
     DefaultConfigTSFile: "config.ts",

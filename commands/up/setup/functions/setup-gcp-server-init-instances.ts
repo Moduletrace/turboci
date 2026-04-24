@@ -36,12 +36,7 @@ export default async function ({
         process.exit(1);
     }
 
-    const {
-        appSSHKeyName,
-        finalServiceName,
-        loadBalancerFirewallName,
-        appNetworkName,
-    } = grabAppNames({
+    const { finalServiceName, appNetworkName } = grabAppNames({
         name: deploymentName,
         serviceName,
     });

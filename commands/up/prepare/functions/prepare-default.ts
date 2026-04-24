@@ -11,6 +11,7 @@ import grabPostgresServerPrepSH from "@/functions/server/shell/grab-postgres-ser
 import grabMysqlServerPrepSH from "@/functions/server/shell/grab-mysql-server-prep-sh";
 import type { DefaultPrepParams, ResponseObject } from "@/types";
 import grabDockerServerPrepSH from "@/functions/server/shell/grab-docker-server-prep-sh";
+import grabSpecServerPrepSH from "@/functions/server/shell/grab-spec-server-prep-sh";
 
 export default async function (
     params: DefaultPrepParams,
@@ -96,6 +97,16 @@ export default async function (
                     bun: true,
                 });
 
+            case "spec":
+                return await grabSpecServerPrepSH({
+                    private_server_ips: serversPrivateIPs.map(
+                        (ip) => `"${ip}"`,
+                    ),
+                    service,
+                    deployment,
+                    bun: true,
+                });
+
             default:
                 return await grabServerPrepSH({
                     private_server_ips: serversPrivateIPs.map(
@@ -120,6 +131,7 @@ export default async function (
         deployment,
         log_error: true,
         bun: true,
+        // options: { stdio: "inherit" },
     });
 
     if (!res) {

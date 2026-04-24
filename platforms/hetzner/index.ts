@@ -37,6 +37,12 @@ import primaryIPsGet from "./actions/primary_ips/get";
 import primaryIPsUpdate from "./actions/primary_ips/update";
 import primaryIPsDelete from "./actions/primary_ips/delete";
 
+import volumesList from "./actions/volumes/list";
+import volumesGet from "./actions/volumes/get";
+import volumesCreate from "./actions/volumes/create";
+import volumesDelete from "./actions/volumes/delete";
+import volumesUpdate from "./actions/volumes/update";
+
 const Hetzner = {
     locations: {
         list: locationsList,
@@ -85,6 +91,13 @@ const Hetzner = {
         get: primaryIPsGet,
         update: primaryIPsUpdate,
         delete: primaryIPsDelete,
+    },
+    volumes: {
+        list: volumesList,
+        get: volumesGet,
+        create: volumesCreate,
+        update: volumesUpdate,
+        delete: volumesDelete,
     },
 };
 

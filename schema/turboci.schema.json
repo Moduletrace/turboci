@@ -37,6 +37,59 @@
                         "title": "env_file",
                         "type": "string"
                     },
+                    "firewalls": {
+                        "additionalProperties": {
+                            "properties": {
+                                "description": {
+                                    "title": "description",
+                                    "type": "string"
+                                },
+                                "ports": {
+                                    "items": {
+                                        "anyOf": [
+                                            {
+                                                "properties": {
+                                                    "allowed_sources": {
+                                                        "items": {
+                                                            "type": "string"
+                                                        },
+                                                        "title": "allowed_sources",
+                                                        "type": "array"
+                                                    },
+                                                    "port": {
+                                                        "title": "port",
+                                                        "type": [
+                                                            "string",
+                                                            "number"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "port"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": [
+                                                    "string",
+                                                    "number"
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    "title": "ports",
+                                    "type": "array"
+                                }
+                            },
+                            "required": [
+                                "ports"
+                            ],
+                            "type": "object"
+                        },
+                        "description": "Additional Firewalls to setup",
+                        "title": "firewalls",
+                        "type": "object"
+                    },
                     "location": {
                         "description": "Provider-specific datacenter/region slug, e.g. `\"ash\"` for Hetzner Ashburn.",
                         "title": "location",
@@ -184,6 +237,14 @@
                                     "description": "Path to a `.env` file loaded into this service's environment.",
                                     "title": "env_file",
                                     "type": "string"
+                                },
+                                "firewalls": {
+                                    "description": "Firewalls to attach to this service. Must be defined in the top\nlevel deployment config first.",
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "title": "firewalls",
+                                    "type": "array"
                                 },
                                 "git": {
                                     "anyOf": [
@@ -1370,6 +1431,59 @@
                                 "title": "env_file",
                                 "type": "string"
                             },
+                            "firewalls": {
+                                "additionalProperties": {
+                                    "properties": {
+                                        "description": {
+                                            "title": "description",
+                                            "type": "string"
+                                        },
+                                        "ports": {
+                                            "items": {
+                                                "anyOf": [
+                                                    {
+                                                        "properties": {
+                                                            "allowed_sources": {
+                                                                "items": {
+                                                                    "type": "string"
+                                                                },
+                                                                "title": "allowed_sources",
+                                                                "type": "array"
+                                                            },
+                                                            "port": {
+                                                                "title": "port",
+                                                                "type": [
+                                                                    "string",
+                                                                    "number"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "port"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    {
+                                                        "type": [
+                                                            "string",
+                                                            "number"
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            "title": "ports",
+                                            "type": "array"
+                                        }
+                                    },
+                                    "required": [
+                                        "ports"
+                                    ],
+                                    "type": "object"
+                                },
+                                "description": "Additional Firewalls to setup",
+                                "title": "firewalls",
+                                "type": "object"
+                            },
                             "location": {
                                 "description": "Provider-specific datacenter/region slug, e.g. `\"ash\"` for Hetzner Ashburn.",
                                 "title": "location",
@@ -1517,6 +1631,14 @@
                                             "description": "Path to a `.env` file loaded into this service's environment.",
                                             "title": "env_file",
                                             "type": "string"
+                                        },
+                                        "firewalls": {
+                                            "description": "Firewalls to attach to this service. Must be defined in the top\nlevel deployment config first.",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "title": "firewalls",
+                                            "type": "array"
                                         },
                                         "git": {
                                             "anyOf": [

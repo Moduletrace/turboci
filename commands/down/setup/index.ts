@@ -4,6 +4,7 @@ import dropServices from "./drop-services";
 import dropSshKey from "./drop-ssh-key";
 import dropRelayServer from "./drop-relay-server";
 import dropFirewalls from "./drop-firewalls";
+import dropVolumes from "./drop-volumes";
 
 export type DownSetupParams = {
     deployments?: TCIGlobalConfig[];
@@ -56,9 +57,26 @@ export default async function (params?: DownSetupParams) {
         const dropFirewallsRes = await dropFirewalls();
 
         if (dropFirewallsRes) {
-            global.ORA_SPINNER.succeed(`Firewall Rules Successfully!`);
+            global.ORA_SPINNER.succeed(`Firewall Rules dropped Successfully!`);
         } else {
             console.error(`Firewalls Removal Failed!`);
+            process.exit(1);
+        }
+    }
+
+    /**
+     * # Drop Volumes
+     */
+    if (!params?.service_name) {
+        global.ORA_SPINNER.text = `Dropping Volumes ...`;
+        global.ORA_SPINNER.start();
+
+        const dropVolumesRes = await dropVolumes();
+
+        if (dropVolumesRes) {
+            global.ORA_SPINNER.succeed(`Volumes dropped Successfully!`);
+        } else {
+            console.error(`Volumes Removal Failed!`);
             process.exit(1);
         }
     }

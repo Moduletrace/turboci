@@ -20,6 +20,8 @@ export default function grabAppNames({
     const defaultFirewallName = `${turboCIPrefix}_default_firewall`;
     const allowAllFirewallName = `${turboCIPrefix}_allow_all_firewall`;
     const loadBalancerFirewallName = `${turboCIPrefix}_load_balancer_firewall`;
+    const dbLoadBalancerFirewallName = `${turboCIPrefix}_db_load_balancer_firewall`;
+    const volumeName = `${turboCIPrefix}_volume`;
 
     const sshRelayServerName = `${turboCIPrefix}_${appName}_ssh_relay`;
     const defaultNATName = `${turboCIPrefix}_${appName}_nat_gateway`;
@@ -48,5 +50,7 @@ export default function grabAppNames({
         allowAllFirewallName,
         publicSubnetName,
         privateSubnetName,
+        dbLoadBalancerFirewallName,
+        volumeName,
     };
 }

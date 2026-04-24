@@ -14,6 +14,9 @@ import AppData from "@/data/app-data";
 import type { HetznerImages } from "@/platforms/hetzner/types/images";
 import hetznerGrabServerType from "@/platforms/hetzner/utils/grab-server-type";
 import isServiceLoadBalancerType from "../utils/is-service-load-balancer-type";
+import grabFirewallName from "@/utils/grab-firewall-name";
+import setupHetznerServerInitFirewalls from "./setup-hetzner-server-init-firewalls";
+import setupHetznerServerInitVolumes from "./setup-hetzner-server-init-volumes";
 
 type Params = {
     service: TCIConfigServiceConfig;
@@ -40,20 +43,24 @@ export default async function ({
         process.exit(1);
     }
 
-    const { appSSHKeyName, finalServiceName, loadBalancerFirewallName } =
-        grabAppNames({
-            name: deploymentName,
-            serviceName,
-            deployment,
-        });
+    const { appSSHKeyName, finalServiceName } = grabAppNames({
+        name: deploymentName,
+        serviceName,
+        deployment,
+    });
 
     const networkId = defaultNetwork.id;
 
-    const firewall =
-        service.type == "load_balancer"
-            ? (await Hetzner.firewalls.list({ name: loadBalancerFirewallName }))
-                  ?.firewalls?.[0]
-            : undefined;
+    const firewalls = await setupHetznerServerInitFirewalls({
+        deployment,
+        service,
+        serviceName,
+    });
+
+    const volumes = await setupHetznerServerInitVolumes({
+        deployment,
+        service,
+    });
 
     const finalServerType = await hetznerGrabServerType({
         server_type: service.server_type,
@@ -137,13 +144,8 @@ export default async function ({
                             image: finalOS,
                             location: deployment.location as any,
                             networks: [networkId],
-                            firewalls: firewall?.id
-                                ? [
-                                      {
-                                          firewall: firewall.id,
-                                      },
-                                  ]
-                                : undefined,
+                            firewalls,
+                            volumes,
                             public_net:
                                 isServiceLoadBalancerType({ service }) ||
                                 service.enable_public_ip

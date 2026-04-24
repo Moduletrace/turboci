@@ -41,10 +41,7 @@ export default async function grabMariadbGaleraServerPrepSH({
     const bindAddress = galeraConfig?.bind_address ?? "0.0.0.0";
     const rootPassword = galeraConfig?.root_password ?? "";
 
-    // The first IP in the list becomes the bootstrap (primary component) node
     const bootstrapNodeIP = private_server_ips[0]?.replace(/"/g, "") ?? "";
-
-    // All node IPs form the Galera cluster address
     const clusterAddressIPs = private_server_ips
         .map((ip) => ip.replace(/"/g, ""))
         .join(",");
@@ -56,17 +53,18 @@ export default async function grabMariadbGaleraServerPrepSH({
 
     let finalCmd = defaultPrepCmd;
 
-    finalCmd += `echo "--- TurboCI: Installing MariaDB Galera packages ---"\n`;
-    finalCmd += `apt update -qq\n`;
-    finalCmd += `apt install -y mariadb-server mariadb-backup galera-4 socat rsync\n`;
-    finalCmd += `systemctl stop mariadb 2>/dev/null || true\n\n`;
+    // --- IDEMPOTENT INSTALLATION ---
+    finalCmd += `echo "--- TurboCI: Checking/Installing MariaDB Galera packages ---"\n`;
+    finalCmd += `export DEBIAN_FRONTEND=noninteractive\n`;
+    // Only install if mariadb isn't present to save time/bandwidth on re-runs
+    finalCmd += `command -v mariadbd >/dev/null 2>&1 || (\n`;
+    finalCmd += `    apt update -qq\n`;
+    finalCmd += `    apt install -y mariadb-server mariadb-backup galera-4 socat rsync\n`;
+    finalCmd += `)\n\n`;
 
-    // Detect own private IP at runtime for wsrep_node_address
     finalCmd += `MY_IP=$(hostname -I | awk '{print $1}')\n\n`;
 
-    // Write /etc/mysql/conf.d/galera.cnf
-    // Use double-quoted heredoc so $MY_IP substitution works for the sed placeholder only;
-    // the actual wsrep_node_address is set via sed after the file is written.
+    // --- IDEMPOTENT CONFIGURATION ---
     finalCmd += `mkdir -p /etc/mysql/conf.d\n`;
     finalCmd += `cat > /etc/mysql/conf.d/galera.cnf << 'GALERAEOF'\n`;
     finalCmd += `[mysqld]\n`;
@@ -75,58 +73,85 @@ export default async function grabMariadbGaleraServerPrepSH({
     finalCmd += `innodb_autoinc_lock_mode=2\n`;
     finalCmd += `bind-address=${bindAddress}\n`;
     finalCmd += `port=${port}\n`;
-    finalCmd += `\n`;
-    finalCmd += `# Galera Provider\n`;
     finalCmd += `wsrep_on=ON\n`;
     finalCmd += `wsrep_provider=/usr/lib/galera/libgalera_smm.so\n`;
-    finalCmd += `\n`;
-    finalCmd += `# Galera Cluster\n`;
     finalCmd += `wsrep_cluster_name="${clusterName}"\n`;
     finalCmd += `wsrep_cluster_address="gcomm://${clusterAddressIPs}"\n`;
-    finalCmd += `\n`;
-    finalCmd += `# SST\n`;
     finalCmd += `wsrep_sst_method=${sstMethod}\n`;
-    finalCmd += `\n`;
-    finalCmd += `# Node identity — populated at runtime by TurboCI\n`;
     finalCmd += `wsrep_node_address="__TCI_NODE_IP__"\n`;
     finalCmd += `wsrep_node_name="galera-$(hostname -s)"\n`;
     finalCmd += `GALERAEOF\n\n`;
 
-    // Replace the placeholder with the real IP detected at runtime
     finalCmd += `sed -i "s/__TCI_NODE_IP__/$MY_IP/" /etc/mysql/conf.d/galera.cnf\n\n`;
 
-    // Write /usr/local/bin/tci-galera-start.sh
+    // --- START SCRIPT ---
     finalCmd += `cat > /usr/local/bin/tci-galera-start.sh << 'STARTEOF'\n`;
     finalCmd += `#!/bin/bash\n`;
-    finalCmd += `set -e\n`;
     finalCmd += `MY_IP=$(hostname -I | awk '{print $1}')\n`;
+    // If MariaDB is already running, don't try to bootstrap/start it again
+    finalCmd += `if systemctl is-active --quiet mariadb; then\n`;
+    finalCmd += `    echo "TurboCI: MariaDB is already running."\n`;
+    finalCmd += `    exit 0\n`;
+    finalCmd += `fi\n`;
     finalCmd += `if [ "$MY_IP" = "${bootstrapNodeIP}" ]; then\n`;
-    finalCmd += `    echo "TurboCI: Bootstrapping Galera cluster as primary component ($MY_IP) ..."\n`;
+    finalCmd += `    echo "TurboCI: Bootstrapping Galera cluster..."\n`;
     finalCmd += `    galera_new_cluster\n`;
     finalCmd += `else\n`;
-    finalCmd += `    echo "TurboCI: Joining Galera cluster from $MY_IP ..."\n`;
+    finalCmd += `    echo "TurboCI: Joining Galera cluster..."\n`;
     finalCmd += `    systemctl start mariadb\n`;
     finalCmd += `fi\n`;
     finalCmd += `STARTEOF\n`;
     finalCmd += `chmod +x /usr/local/bin/tci-galera-start.sh\n\n`;
 
-    // Build init SQL (CREATE DATABASE, CREATE USER — only run on bootstrap node)
+    // --- SQL INIT (Idempotent Users) ---
     const initSqlLines: string[] = [];
+
+    // Detect ProxySQL attachments
+    const attached_proxysql = deployment.services.filter(
+        (s) =>
+            s.type === "proxysql" &&
+            s.target_services?.some(
+                (ts) => ts.service_name === service.service_name,
+            ),
+    );
+
+    // Detect HAProxy attachments
+    const attached_haproxy = deployment.services.filter(
+        (s) =>
+            s.type === "haproxy" &&
+            s.target_services?.some(
+                (ts) => ts.service_name === service.service_name,
+            ),
+    );
+
+    // ProxySQL Monitor User
+    for (const p of attached_proxysql) {
+        initSqlLines.push(
+            `CREATE USER IF NOT EXISTS 'proxysql_monitor'@'%' IDENTIFIED BY '${p.proxysql?.monitor_password}';`,
+        );
+        initSqlLines.push(
+            `GRANT USAGE, REPLICATION CLIENT ON *.* TO 'proxysql_monitor'@'%';`,
+        );
+    }
+
+    // HAProxy Check User (Allows HAProxy 'option mysql-check' to work)
+    if (attached_haproxy.length > 0) {
+        initSqlLines.push(`CREATE USER IF NOT EXISTS 'haproxy_check'@'%';`);
+        initSqlLines.push(`GRANT USAGE ON *.* TO 'haproxy_check'@'%';`);
+    }
 
     if (rootPassword) {
         initSqlLines.push(
             `ALTER USER 'root'@'localhost' IDENTIFIED BY '${rootPassword}';`,
         );
-        initSqlLines.push(`FLUSH PRIVILEGES;`);
     }
 
-    if (galeraConfig?.databases?.[0]) {
+    if (galeraConfig?.databases) {
         for (const db of galeraConfig.databases) {
-            const charset = db.charset ?? "utf8mb4";
-            const collation = db.collation ?? "utf8mb4_unicode_ci";
             initSqlLines.push(
-                `CREATE DATABASE IF NOT EXISTS \\\`${db.name}\\\` CHARACTER SET ${charset} COLLATE ${collation};`,
+                `CREATE DATABASE IF NOT EXISTS \\\`${db.name}\\\`;`,
             );
+
             if (db.user && db.password) {
                 initSqlLines.push(
                     `CREATE USER IF NOT EXISTS '${db.user}'@'%' IDENTIFIED BY '${db.password}';`,
@@ -136,34 +161,24 @@ export default async function grabMariadbGaleraServerPrepSH({
                 );
             }
         }
-        initSqlLines.push(`FLUSH PRIVILEGES;`);
     }
+    initSqlLines.push(`FLUSH PRIVILEGES;`);
 
-    if (initSqlLines.length > 0) {
-        finalCmd += `cat > /usr/local/bin/tci-galera-init.sql << 'INITEOF'\n`;
-        for (const line of initSqlLines) {
-            finalCmd += `${line}\n`;
-        }
-        finalCmd += `INITEOF\n\n`;
+    // Write SQL and Init script
+    finalCmd += `cat > /usr/local/bin/tci-galera-init.sql << 'INITEOF'\n${initSqlLines.join("\n")}\nINITEOF\n\n`;
 
-        // Write /usr/local/bin/tci-galera-init.sh — runs SQL only on bootstrap node
-        finalCmd += `cat > /usr/local/bin/tci-galera-init.sh << 'INITSHEOF'\n`;
-        finalCmd += `#!/bin/bash\n`;
-        finalCmd += `set -e\n`;
-        finalCmd += `MY_IP=$(hostname -I | awk '{print $1}')\n`;
-        finalCmd += `if [ "$MY_IP" = "${bootstrapNodeIP}" ]; then\n`;
-        finalCmd += `    echo "TurboCI: Running Galera init SQL on bootstrap node ..."\n`;
-        if (rootPassword) {
-            finalCmd += `    mysql -u root -p'${rootPassword}' < /usr/local/bin/tci-galera-init.sql\n`;
-        } else {
-            finalCmd += `    mysql -u root < /usr/local/bin/tci-galera-init.sql\n`;
-        }
-        finalCmd += `fi\n`;
-        finalCmd += `INITSHEOF\n`;
-        finalCmd += `chmod +x /usr/local/bin/tci-galera-init.sh\n`;
-    }
+    finalCmd += `cat > /usr/local/bin/tci-galera-init.sh << 'INITSHEOF'\n`;
+    finalCmd += `#!/bin/bash\n`;
+    finalCmd += `MY_IP=$(hostname -I | awk '{print $1}')\n`;
+    finalCmd += `if [ "$MY_IP" = "${bootstrapNodeIP}" ]; then\n`;
+    finalCmd += `    echo "TurboCI: Running Galera init SQL..."\n`;
+    // Use -p only if rootPassword exists
+    const passArg = rootPassword ? `-p'${rootPassword}'` : "";
+    finalCmd += `    mysql -u root ${passArg} < /usr/local/bin/tci-galera-init.sql || echo "SQL Init failed (maybe password already set?)"\n`;
+    finalCmd += `fi\n`;
+    finalCmd += `INITSHEOF\n`;
+    finalCmd += `chmod +x /usr/local/bin/tci-galera-init.sh\n`;
 
-    // Run sequentially: bootstrap node must be configured before joiners start
     return bun
         ? bunGrabPrivateIPsBulkScripts({
               private_server_ips,

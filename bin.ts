@@ -15,6 +15,7 @@ import ora, { type Ora } from "ora";
 import grabActiveConfig from "./utils/grab-active-config";
 import control from "./commands/control";
 import info from "./commands/info";
+import status from "./commands/status";
 
 /**
  * # Declare Global Variables
@@ -55,7 +56,7 @@ global.ACTIVE_CONFIGS = grabActiveConfig();
 program
     .name(`turboci`)
     .description(`A simple and fast cloud deployment CLI tool`)
-    .version(`1.0.0`);
+    .version(`1.2.0`);
 
 /**
  * # Declare Commands
@@ -65,6 +66,7 @@ program.addCommand(down());
 program.addCommand(init());
 program.addCommand(control());
 program.addCommand(info());
+program.addCommand(status());
 
 /**
  * # Handle Unavailable Commands

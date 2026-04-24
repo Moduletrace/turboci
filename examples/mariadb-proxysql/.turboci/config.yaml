@@ -23,16 +23,12 @@ deployments:
                         password: "${DB_APP_PASSWORD}"
                         charset: utf8mb4
                         collation: utf8mb4_unicode_ci
-              # TurboCI installs MariaDB + Galera, writes galera.cnf with all node
-              # IPs, and generates /usr/local/bin/tci-galera-start.sh.
-              # That script bootstraps the first node and joins the rest.
               run:
                   start:
                       cmds:
                           - /usr/local/bin/tci-galera-start.sh
                   postflight:
                       cmds:
-                          # Runs CREATE DATABASE / CREATE USER on the bootstrap node only
                           - /usr/local/bin/tci-galera-init.sh
               healthcheck:
                   cmd: mysql -u root -p"${DB_ROOT_PASSWORD}" -e "SHOW STATUS LIKE 'wsrep_cluster_size';"
@@ -47,10 +43,6 @@ deployments:
               server_type: cpx11
               proxysql:
                   target_services:
-                      - service_name: db
-                        port: 3306
-                        hostgroup: 10
-                        max_connections: 200
                       - service_name: db
                         port: 3306
                         hostgroup: 20
@@ -74,15 +66,14 @@ deployments:
                         destination_hostgroup: 20
                         apply: true
                         comment: "All SELECTs go to reader hostgroup"
-              # No run scripts needed — TurboCI installs ProxySQL, writes
-              # /etc/proxysql.cnf with backend IPs and query rules, removes
-              # the stale SQLite database so the config is re-read, and
-              # starts the service during prepare.
               healthcheck:
                   cmd: mysql -u admin -p"${PROXYSQL_ADMIN_PASSWORD}" -h 127.0.0.1 -P 6032 -e "SELECT hostgroup_id, hostname, status FROM runtime_mysql_servers LIMIT 1;"
                   test: "ONLINE"
               logs:
                   - journalctl -fu proxysql
+              enable_public_ip: true
+              firewalls:
+                  - proxy_admin
 
       env:
           MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
@@ -90,3 +81,7 @@ deployments:
           MYSQL_REPL_PASSWORD: "${MYSQL_REPL_PASSWORD}"
           PROXYSQL_ADMIN_PASSWORD: "${PROXYSQL_ADMIN_PASSWORD}"
           PROXYSQL_MONITOR_PASSWORD: "${PROXYSQL_MONITOR_PASSWORD}"
+      firewalls:
+          proxy_admin:
+              ports:
+                  - 6033
