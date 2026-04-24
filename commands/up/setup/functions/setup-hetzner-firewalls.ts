@@ -160,7 +160,7 @@ export default async function ({ config }: Params) {
             }
 
             const new_firewall = await Hetzner.firewalls.create({
-                name: loadBalancerFirewallName,
+                name: final_firewall_name,
                 labels: {
                     [AppNames["TurboCILabelNameKey"]]: deploymentName,
                     [AppNames["TurboCILabelFirewallNameKey"]]:
@@ -168,8 +168,6 @@ export default async function ({ config }: Params) {
                 },
                 rules: firewall_rules,
             });
-
-            console.log("new_firewall", new_firewall);
         }
     }
 

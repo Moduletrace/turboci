@@ -224,3 +224,5 @@ export default async function ({
 
     return true;
 }
+
+// INSERT INTO mysql_users (username, password, default_hostgroup) VALUES ('archben', 'tobybenoti', 20);

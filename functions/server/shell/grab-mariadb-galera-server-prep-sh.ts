@@ -110,7 +110,7 @@ export default async function grabMariadbGaleraServerPrepSH({
     const attached_proxysql = deployment.services.filter(
         (s) =>
             s.type === "proxysql" &&
-            s.target_services?.some(
+            s.proxysql?.target_services?.some(
                 (ts) => ts.service_name === service.service_name,
             ),
     );
@@ -119,7 +119,7 @@ export default async function grabMariadbGaleraServerPrepSH({
     const attached_haproxy = deployment.services.filter(
         (s) =>
             s.type === "haproxy" &&
-            s.target_services?.some(
+            s.haproxy?.target_services?.some(
                 (ts) => ts.service_name === service.service_name,
             ),
     );

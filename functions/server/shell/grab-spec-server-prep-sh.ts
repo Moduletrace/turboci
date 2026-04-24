@@ -1,4 +1,3 @@
-import { turboCiDepsCmds } from "@/functions/server/install-turboci-dependencies";
 import type {
     ParsedDeploymentServiceConfig,
     TCIConfigSpec,
@@ -7,7 +6,6 @@ import type {
 import _ from "lodash";
 import bunGrabPrivateIPsBulkScripts from "@/utils/bun-scripts/bun-grab-private-ips-bulk-scripts";
 import grabPrivateIPsBulkScripts from "@/utils/ssh/shell-scripts/grab-private-ips-bulk-scripts";
-import grabDefaultServicePrepSH from "./grab-default-service-prep-sh";
 import grabPreferedOSType from "@/utils/grab-os-type";
 import jsyaml from "js-yaml";
 
@@ -25,11 +23,6 @@ export default async function grabSpecServerPrepSH({
     bun,
 }: Params) {
     try {
-        const os = await grabPreferedOSType({
-            deployment,
-            os: service.os,
-        });
-
         let finalCmd = "";
 
         if (!service.spec_url) {
@@ -51,6 +44,8 @@ export default async function grabSpecServerPrepSH({
         if (!init?.match(/./)) {
             throw new Error(`Couldn't grab initialization script.`);
         }
+
+        finalCmd += `${init}\n`;
 
         const bulkCmds = bun
             ? bunGrabPrivateIPsBulkScripts({

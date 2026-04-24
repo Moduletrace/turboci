@@ -33,17 +33,10 @@ deployments:
                       user: replicator
                       password: "${PG_REPL_PASSWORD}"
                       max_wal_senders: 5
-              # TurboCI installs PostgreSQL, configures postgresql.conf and
-              # pg_hba.conf, and generates /usr/local/bin/tci-postgres-start.sh.
-              # That script starts the primary, creates users/databases, and
-              # runs pg_basebackup + standby startup on all other nodes.
               run:
                   start:
                       cmds:
                           - /usr/local/bin/tci-postgres-start.sh
-              #   healthcheck:
-              #       cmd: pg_isready -U postgres
-              #       test: "accepting connections"
               logs:
                   - journalctl -fu postgresql
 
@@ -70,9 +63,6 @@ deployments:
                   stats_port: 8404
                   stats_user: admin
                   stats_password: "${HAPROXY_STATS_PASSWORD}"
-              # No run scripts needed — TurboCI installs HAProxy, writes
-              # /etc/haproxy/haproxy.cfg with the discovered backend IPs,
-              # validates the config, and starts the service during prepare.
               healthcheck:
                   cmd: haproxy -c -f /etc/haproxy/haproxy.cfg
                   test: "Configuration file is valid"

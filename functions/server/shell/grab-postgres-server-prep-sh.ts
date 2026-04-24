@@ -40,7 +40,7 @@ export default async function grabPostgresServerPrepSH({
 }: Params) {
     const pgConfig = service.postgres;
     const port = pgConfig?.port ?? 5432;
-    const listenAddresses = pgConfig?.listen_addresses ?? "localhost";
+    const listenAddresses = pgConfig?.listen_addresses ?? "*";
     const maxConnections = pgConfig?.max_connections ?? 100;
     const sharedBuffers = pgConfig?.shared_buffers ?? "128MB";
     const rootPassword = pgConfig?.root_password ?? "";
