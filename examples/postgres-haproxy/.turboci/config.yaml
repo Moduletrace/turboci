@@ -37,6 +37,9 @@ deployments:
                   start:
                       cmds:
                           - /usr/local/bin/tci-postgres-start.sh
+                  postflight:
+                      cmds:
+                          - /usr/local/bin/tci-postgres-init.sh
               logs:
                   - journalctl -fu postgresql
 
