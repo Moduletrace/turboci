@@ -34,6 +34,7 @@ export default async function ({
             case "load_balancer":
             case "haproxy":
             case "proxysql":
+            case "maxscale":
                 break;
 
             default:
@@ -161,7 +162,6 @@ export default async function ({
 
     const servers = await grabNormalizedServers({
         provider: deployment.provider,
-        instances: finalInstances,
         service,
         target_deployment: deployment,
     });

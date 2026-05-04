@@ -12,6 +12,7 @@ export default function isServiceLoadBalancerType({ service }: Params) {
             "load_balancer",
             "haproxy",
             "proxysql",
+            "maxscale",
         ] as (typeof TCIServiceTypes)[number]["value"][]
     ).includes(service_type);
 

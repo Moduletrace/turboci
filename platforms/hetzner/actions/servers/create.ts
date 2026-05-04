@@ -28,11 +28,22 @@ type Params = {
 };
 
 export default async function (params: Params) {
+    let user_data =
+        (params.user_data || "#!/bin/bash") +
+        [
+            "",
+            "rm -rf /etc/apt/sources.list.d/*",
+            "rm -rf /var/lib/apt/lists/*",
+            "apt update -qq",
+            "",
+        ].join("\n");
+
     const res = await hetznerQuery<HETZNER_EXISTING_SERVER>({
         path: "servers",
         body: {
             ...params,
             name: slugify(params.name, "-"),
+            user_data,
         },
         options: {
             method: "POST",

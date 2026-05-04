@@ -1,7 +1,4 @@
-import type {
-    ParsedDeploymentServiceConfig,
-    TCIGlobalConfig,
-} from "@/types";
+import type { ParsedDeploymentServiceConfig, TCIGlobalConfig } from "@/types";
 import bunGrabPrivateIPsBulkScripts from "@/utils/bun-scripts/bun-grab-private-ips-bulk-scripts";
 import grabPrivateIPsBulkScripts from "@/utils/ssh/shell-scripts/grab-private-ips-bulk-scripts";
 import grabDefaultServicePrepSH from "./grab-default-service-prep-sh";
@@ -51,7 +48,10 @@ export default async function grabMysqlServerPrepSH({
     // The first IP in the list becomes the primary (server-id = 1)
     const primaryNodeIP = private_server_ips[0]?.replace(/"/g, "") ?? "";
 
-    const defaultPrepCmd = await grabDefaultServicePrepSH({ service, deployment });
+    const defaultPrepCmd = await grabDefaultServicePrepSH({
+        service,
+        deployment,
+    });
 
     let finalCmd = defaultPrepCmd;
 
@@ -117,9 +117,9 @@ export default async function grabMysqlServerPrepSH({
             const charset = db.charset ?? "utf8mb4";
             const collation = db.collation ?? "utf8mb4_unicode_ci";
             finalCmd += `    mysql -u root ${rootFlag} -e "CREATE DATABASE IF NOT EXISTS \\\`${db.name}\\\` CHARACTER SET ${charset} COLLATE ${collation};" 2>/dev/null || true\n`;
-            if (db.user && db.password) {
-                finalCmd += `    mysql -u root ${rootFlag} -e "CREATE USER IF NOT EXISTS '${db.user}'@'%' IDENTIFIED BY '${db.password}'; GRANT ALL PRIVILEGES ON \\\`${db.name}\\\`.* TO '${db.user}'@'%'; FLUSH PRIVILEGES;"\n`;
-            }
+            // if (db.user && db.password) {
+            //     finalCmd += `    mysql -u root ${rootFlag} -e "CREATE USER IF NOT EXISTS '${db.user}'@'%' IDENTIFIED BY '${db.password}'; GRANT ALL PRIVILEGES ON \\\`${db.name}\\\`.* TO '${db.user}'@'%'; FLUSH PRIVILEGES;"\n`;
+            // }
         }
     }
 

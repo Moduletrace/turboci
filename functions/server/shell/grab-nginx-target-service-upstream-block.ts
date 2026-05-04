@@ -22,15 +22,6 @@ export default async function grabNginxTargetServiceUpstreamBlock({
         return cnf;
     }
 
-    const finalInstances =
-        typeof service_config.instances == "number"
-            ? service_config.instances
-            : 1;
-    const finalClusters =
-        typeof service_config.clusters == "number"
-            ? service_config.clusters
-            : 1;
-
     const target_service_full_object = target_deployment.services.find(
         (s) => s.service_name == target_service.service_name,
     );
@@ -42,8 +33,6 @@ export default async function grabNginxTargetServiceUpstreamBlock({
     const service_servers = await grabNormalizedServers({
         provider: target_deployment.provider,
         service: target_service_full_object,
-        instances: finalInstances,
-        clusters: finalClusters,
         target_deployment,
         grab_children: true,
     });

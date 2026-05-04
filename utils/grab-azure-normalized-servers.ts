@@ -15,7 +15,6 @@ import type { AZURE_VM } from "@/platforms/azure/types";
 
 type Params = {
     service: ParsedDeploymentServiceConfig;
-    instances?: number;
     grab_children?: boolean;
     target_deployment: TCIGlobalConfig;
 };
@@ -55,7 +54,6 @@ async function getServerIPs(
 
 export default async function grabAzureNormalizedServers({
     service,
-    instances,
     grab_children,
     target_deployment,
 }: Params): Promise<NormalizedServerObject[] | undefined> {
@@ -65,10 +63,6 @@ export default async function grabAzureNormalizedServers({
     });
 
     let servers: NormalizedServerObject[] = [];
-
-    if (!_n(instances)) {
-        return undefined;
-    }
 
     const serversRes = await TurboCIAzure.servers.list({
         deployment_name: target_deployment.deployment_name,

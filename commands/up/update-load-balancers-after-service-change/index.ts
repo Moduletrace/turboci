@@ -6,6 +6,7 @@ import type { ParsedDeploymentServiceConfig, TCIGlobalConfig } from "@/types";
 import grabNormalizedServers from "@/utils/grab-normalized-servers";
 import relayExecSSH from "@/utils/ssh/relay-exec-ssh";
 import chalk from "chalk";
+import isServiceLoadBalancerType from "../setup/utils/is-service-load-balancer-type";
 
 type Params = {
     load_balancers: ParsedDeploymentServiceConfig[];
@@ -33,13 +34,13 @@ export default async function ({
                 ? load_balancer.haproxy?.target_services
                 : load_balancer.type === "proxysql"
                   ? load_balancer.proxysql?.target_services
-                  : load_balancer.target_services;
-
-        const proxyServiceTypes = ["load_balancer", "haproxy", "proxysql"];
+                  : load_balancer.type === "maxscale"
+                    ? load_balancer.maxscale?.target_services
+                    : load_balancer.target_services;
 
         const loadBalancerServices = services.filter(
             (srv) =>
-                !proxyServiceTypes.includes(srv.type as string) &&
+                !isServiceLoadBalancerType({ service: srv }) &&
                 proxyTargets?.find(
                     (tsrv) => srv.service_name === tsrv.service_name,
                 ),
@@ -47,14 +48,8 @@ export default async function ({
 
         if (!loadBalancerServices?.[0]) continue;
 
-        const finalInstances =
-            typeof load_balancer.instances == "number"
-                ? load_balancer.instances
-                : 1;
-
         const servers = await grabNormalizedServers({
             provider: deployment.provider,
-            instances: finalInstances,
             service: load_balancer,
             target_deployment: deployment,
             grab_children: true,
@@ -85,6 +80,15 @@ export default async function ({
                         deployment,
                         private_server_ips,
                         proxysql_service: load_balancer,
+                        skip_init: true,
+                        bun: true,
+                    });
+
+                case "maxscale":
+                    return await grabMaxScaleServerPrepSH({
+                        deployment,
+                        private_server_ips,
+                        maxscale_service: load_balancer,
                         skip_init: true,
                         bun: true,
                     });

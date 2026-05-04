@@ -7,7 +7,17 @@ type Params = {
     private_server_ips: string[];
     script: string;
     work_dir?: string;
+    /**
+     * Whether to run instances in parallel. If not
+     * each instance will run after the previous is
+     * complete
+     */
     parrallel?: boolean;
+    /**
+     * Whether to run all at the same time, or run the
+     * first instance first, and then the rest
+     */
+    async?: boolean;
     no_process_logs?: boolean;
     init?: string[];
 };
@@ -19,6 +29,7 @@ export default function bunGrabPrivateIPsBulkScripts({
     parrallel,
     no_process_logs,
     init,
+    async,
 }: Params) {
     const { relayServerSshPrivateKeyFile } = grabDirNames();
 
@@ -104,9 +115,12 @@ export default function bunGrabPrivateIPsBulkScripts({
     bunCmd += `\n`;
 
     if (parrallel) {
-        bunCmd += `const first_host = REMOTE_HOSTS.splice(0,1)[0];\n`;
-        bunCmd += `await run(first_host)\n`;
-        bunCmd += `\n`;
+        if (!async) {
+            bunCmd += `const first_host = REMOTE_HOSTS.splice(0,1)[0];\n`;
+            bunCmd += `await run(first_host)\n`;
+            bunCmd += `\n`;
+        }
+
         bunCmd += `const chunks = _.chunk(REMOTE_HOSTS, BATCH_SIZE);\n`;
         bunCmd += `for (let i = 0; i < chunks.length; i++) {\n`;
         bunCmd += `    const chunk = chunks[i];\n`;

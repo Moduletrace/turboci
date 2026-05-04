@@ -1,4 +1,5 @@
 import type {
+    MaxscaleServerEntry,
     ParsedDeploymentServiceConfig,
     TCIGlobalConfig,
 } from "@/types";
@@ -7,12 +8,6 @@ import grabNormalizedServers from "@/utils/grab-normalized-servers";
 type Params = {
     maxscale_service: ParsedDeploymentServiceConfig;
     deployment: TCIGlobalConfig;
-};
-
-type ServerEntry = {
-    name: string;
-    ip: string;
-    port: number;
 };
 
 /**
@@ -33,7 +28,7 @@ export default async function grabMaxScaleConfig({
         return undefined;
     }
 
-    const serverEntries: ServerEntry[] = [];
+    const serverEntries: MaxscaleServerEntry[] = [];
 
     for (const target of mxConfig.target_services) {
         const targetSvc = deployment.services.find(
@@ -41,16 +36,9 @@ export default async function grabMaxScaleConfig({
         );
         if (!targetSvc) continue;
 
-        const instances =
-            typeof targetSvc.instances === "number" ? targetSvc.instances : 1;
-        const clusters =
-            typeof targetSvc.clusters === "number" ? targetSvc.clusters : 1;
-
         const servers = await grabNormalizedServers({
             provider: deployment.provider,
             service: targetSvc,
-            instances,
-            clusters,
             target_deployment: deployment,
             grab_children: true,
         });
@@ -86,9 +74,9 @@ export default async function grabMaxScaleConfig({
     cnf += `[maxscale]\n`;
     cnf += `threads=auto\n`;
     cnf += `admin_host=0.0.0.0\n`;
-    cnf += `admin_port=${adminPort}\n`;
-    cnf += `admin_user=${adminUser}\n`;
-    cnf += `admin_password=${adminPassword}\n`;
+    // cnf += `admin_port=${adminPort}\n`;
+    // cnf += `admin_user=${adminUser}\n`;
+    // cnf += `admin_password=${adminPassword}\n`;
     cnf += `admin_secure_gui=false\n`;
     cnf += `\n`;
 
@@ -98,32 +86,73 @@ export default async function grabMaxScaleConfig({
         cnf += `address=${entry.ip}\n`;
         cnf += `port=${entry.port}\n`;
         cnf += `protocol=MariaDBBackend\n`;
+        cnf += `proxy_protocol=true\n`;
         cnf += `\n`;
     }
 
-    cnf += `[tci-monitor]\n`;
+    /**
+     * # Monitor Config
+     */
+    cnf += `\n[MariaDB-Monitor]\n`;
     cnf += `type=monitor\n`;
     cnf += `module=${monitor}\n`;
     cnf += `servers=${serversStr}\n`;
     cnf += `user=${user}\n`;
     cnf += `password=${password}\n`;
-    cnf += `monitor_interval=2000ms\n`;
-    cnf += `\n`;
+    cnf += `monitor_interval=2s\n`;
 
-    cnf += `[tci-service]\n`;
+    /**
+     * # Read-Write Service Config
+     */
+    cnf += `\n[Read-Write-Service]\n`;
     cnf += `type=service\n`;
-    cnf += `router=${router}\n`;
+    cnf += `router=readwritesplit\n`;
     cnf += `servers=${serversStr}\n`;
     cnf += `user=${user}\n`;
     cnf += `password=${password}\n`;
-    cnf += `\n`;
+    cnf += `master_failure_mode=fail_on_write\n`;
+    cnf += `slave_selection_criteria=LEAST_CURRENT_OPERATIONS\n`;
+    cnf += `max_replication_lag=30s\n`;
 
-    cnf += `[tci-listener]\n`;
+    /**
+     * # Read-Write Listener Config
+     */
+    cnf += `\n[Read-Write-Listener]\n`;
     cnf += `type=listener\n`;
-    cnf += `service=tci-service\n`;
+    cnf += `service=Read-Write-Service\n`;
     cnf += `protocol=MariaDBClient\n`;
     cnf += `port=${listenPort}\n`;
-    cnf += `\n`;
+    // cnf += `ssl=true\n`;
+    // cnf += `ssl_ca=${sslDir}/ca-cert.pem\n`;
+    // cnf += `ssl_cert=${sslDir}/server-cert.pem\n`;
+    // cnf += `ssl_key=${sslDir}/server-key.pem\n`;
+
+    // cnf += `[tci-monitor]\n`;
+    // cnf += `type=monitor\n`;
+    // cnf += `module=${monitor}\n`;
+    // cnf += `servers=${serversStr}\n`;
+    // cnf += `user=${user}\n`;
+    // cnf += `password=${password}\n`;
+    // cnf += `monitor_interval=2000ms\n`;
+    // cnf += `auto_failover=true\n`;
+    // cnf += `auto_rejoin=true\n`;
+    // cnf += `enforce_read_only_slaves=1\n`;
+    // cnf += `\n`;
+
+    // cnf += `[tci-service]\n`;
+    // cnf += `type=service\n`;
+    // cnf += `router=${router}\n`;
+    // cnf += `servers=${serversStr}\n`;
+    // cnf += `user=${user}\n`;
+    // cnf += `password=${password}\n`;
+    // cnf += `\n`;
+
+    // cnf += `[tci-listener]\n`;
+    // cnf += `type=listener\n`;
+    // cnf += `service=tci-service\n`;
+    // cnf += `protocol=MariaDBClient\n`;
+    // cnf += `port=${listenPort}\n`;
+    // cnf += `\n`;
 
     return cnf;
 }

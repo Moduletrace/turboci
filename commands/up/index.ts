@@ -1,26 +1,23 @@
 import { Command } from "commander";
-import setup from "./setup";
 import turbociInit from "../../utils/init";
-import prepare from "./prepare";
 import cleanup from "./cleanup";
-import run from "./run";
 import chalk from "chalk";
 import log from "./log";
 import generalSetup from "./setup/general-setup";
-import updateLoadBalancersAfterServiceChange from "./update-load-balancers-after-service-change";
 import { AppNames } from "@/utils/app-names";
 import type {
     CommanderDefaultOptions,
     DeploymentAndServicesToUpdate,
     TCIGlobalConfig,
 } from "@/types";
-import checkSkippedService from "@/utils/check-skipped-service";
 import grabSSHRelayServer from "@/functions/server/ssh_relay/grab-ssh-relay-server";
 import validateDeploymentSyntax from "./setup/utils/validate-deployment-syntax";
 import preDeployment from "@/utils/pre-deployment";
 import loadEnvs from "@/utils/load-envs";
 import loadEnvFile from "@/utils/load-env-file";
 import yamlReplaceEnvs from "@/utils/yaml-replace-envs";
+import handleDeploymentService from "./(functions)/handle-deployment-service";
+import isServiceLoadBalancerType from "./setup/utils/is-service-load-balancer-type";
 
 function collectSkippedServices(value: string, previous: string[]) {
     return previous.concat([value]);
@@ -105,11 +102,8 @@ export default function () {
                     )} deployment ...`,
                 );
 
-                const load_balancers = services.filter(
-                    (s) =>
-                        s.type === "load_balancer" ||
-                        s.type === "haproxy" ||
-                        s.type === "proxysql",
+                const load_balancers = services.filter((s) =>
+                    isServiceLoadBalancerType({ service: s }),
                 );
 
                 deployments_and_services_to_update[i] = {
@@ -122,88 +116,16 @@ export default function () {
                     const service = services[s];
                     if (!service) continue;
 
-                    const is_service_skipped = checkSkippedService({
+                    await handleDeploymentService({
                         deployment: final_deployment,
-                        service,
+                        deployment_index: i,
+                        deployments_and_services_to_update,
+                        load_balancers,
                         options,
+                        service,
+                        service_index: s,
+                        services,
                     });
-
-                    if (is_service_skipped) {
-                        deployments_and_services_to_update[
-                            i
-                        ]?.skipped_services.push(service);
-                        continue;
-                    }
-
-                    console.log(
-                        chalk.grey("-------------------------------------"),
-                    );
-
-                    console.log(
-                        `|- Handling ${chalk.white(
-                            chalk.italic(chalk.bold(service.service_name)),
-                        )} service ...`,
-                    );
-
-                    global.CURRENT_SERVICE_INDEX = s;
-
-                    await setup({ deployment: final_deployment, service });
-                    await prepare({ deployment: final_deployment, service });
-                    await run({ deployment: final_deployment, service });
-
-                    const nextService = services[s + 1];
-                    const isNextServiceLoadBalancer =
-                        nextService &&
-                        (nextService.type === "load_balancer" ||
-                            nextService.type === "haproxy" ||
-                            nextService.type === "proxysql");
-
-                    if (
-                        load_balancers?.[0] &&
-                        service.type !== "load_balancer" &&
-                        service.type !== "haproxy" &&
-                        service.type !== "proxysql" &&
-                        !isNextServiceLoadBalancer &&
-                        global.UPDATE_LOAD_BALANCERS
-                        // &&
-                        // !global.UPDATED_LOAD_BALANCERS[
-                        //     deployment.deployment_name
-                        // ]
-                    ) {
-                        const isServiceAttachedToALoadBalancer =
-                            load_balancers.find((lb) => {
-                                const targets =
-                                    lb.type === "haproxy"
-                                        ? lb.haproxy?.target_services
-                                        : lb.type === "proxysql"
-                                          ? lb.proxysql?.target_services
-                                          : lb.target_services;
-                                return Boolean(
-                                    targets?.find(
-                                        (trgSrv) =>
-                                            trgSrv.service_name ===
-                                            service.service_name,
-                                    ),
-                                );
-                            });
-
-                        if (!isServiceAttachedToALoadBalancer) {
-                            global.UPDATE_LOAD_BALANCERS = false;
-                            continue;
-                        }
-
-                        await updateLoadBalancersAfterServiceChange({
-                            deployment: final_deployment,
-                            load_balancers,
-                            service,
-                            services,
-                        });
-
-                        global.UPDATE_LOAD_BALANCERS = false;
-                        global.UPDATED_LOAD_BALANCERS[
-                            final_deployment.deployment_name
-                        ] = true;
-                    }
                 }
             }
 

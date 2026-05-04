@@ -7,11 +7,11 @@ import grabMaxScaleServerPrepSH from "@/functions/server/shell/grab-maxscale-ser
 import grabHAProxyServerPrepSH from "@/functions/server/shell/grab-haproxy-server-prep-sh";
 import grabProxySQLServerPrepSH from "@/functions/server/shell/grab-proxysql-server-prep-sh";
 import grabMariadbGaleraServerPrepSH from "@/functions/server/shell/grab-mariadb-galera-server-prep-sh";
-import grabPostgresServerPrepSH from "@/functions/server/shell/grab-postgres-server-prep-sh";
 import grabMysqlServerPrepSH from "@/functions/server/shell/grab-mysql-server-prep-sh";
 import type { DefaultPrepParams, ResponseObject } from "@/types";
 import grabDockerServerPrepSH from "@/functions/server/shell/grab-docker-server-prep-sh";
 import grabSpecServerPrepSH from "@/functions/server/shell/grab-spec-server-prep-sh";
+import grabPostgresPatroniServerPrepSH from "@/functions/server/shell/grab-postgres-patroni-server-prep-sh";
 
 export default async function (
     params: DefaultPrepParams,
@@ -25,7 +25,7 @@ export default async function (
     global.ORA_SPINNER.text = "Installing Dependencies ...";
     global.ORA_SPINNER.start();
 
-    const finalCmd = await (async () => {
+    const finalCmd: string | undefined | string[] = await (async () => {
         switch (service.type) {
             case "load_balancer":
                 return await grabLoadBalancerServerPrepSH({
@@ -59,16 +59,13 @@ export default async function (
 
             case "mariadb-galera":
                 return await grabMariadbGaleraServerPrepSH({
-                    private_server_ips: serversPrivateIPs.map(
-                        (ip) => `"${ip}"`,
-                    ),
                     service,
                     deployment,
                     bun: true,
                 });
 
             case "postgres":
-                return await grabPostgresServerPrepSH({
+                return await grabPostgresPatroniServerPrepSH({
                     private_server_ips: serversPrivateIPs.map(
                         (ip) => `"${ip}"`,
                     ),
@@ -107,6 +104,16 @@ export default async function (
                     bun: true,
                 });
 
+            case "maxscale":
+                return await grabMaxScaleServerPrepSH({
+                    private_server_ips: serversPrivateIPs.map(
+                        (ip) => `"${ip}"`,
+                    ),
+                    maxscale_service: service,
+                    deployment,
+                    bun: true,
+                });
+
             default:
                 return await grabServerPrepSH({
                     private_server_ips: serversPrivateIPs.map(
@@ -126,17 +133,39 @@ export default async function (
         };
     }
 
-    const res = await relayExecSSH({
-        cmd: finalCmd,
-        deployment,
-        log_error: true,
-        bun: true,
-        // options: { stdio: "inherit" },
-    });
+    if (Array.isArray(finalCmd)) {
+        for (let i = 0; i < finalCmd.length; i++) {
+            const cmd = finalCmd[i];
 
-    if (!res) {
-        console.error(`\`${service.service_name}\` service prep failed!`);
-        process.exit(1);
+            if (!cmd) continue;
+
+            const res = await relayExecSSH({
+                cmd,
+                deployment,
+                log_error: true,
+                bun: true,
+            });
+
+            if (!res) {
+                console.error(
+                    `\`${service.service_name}\` service prep failed!`,
+                );
+                process.exit(1);
+            }
+        }
+    } else {
+        const res = await relayExecSSH({
+            cmd: finalCmd,
+            deployment,
+            log_error: true,
+            bun: true,
+            // options: { stdio: "inherit" },
+        });
+
+        if (!res) {
+            console.error(`\`${service.service_name}\` service prep failed!`);
+            process.exit(1);
+        }
     }
 
     global.ORA_SPINNER.succeed(`Dependencies installed Successfully!`);

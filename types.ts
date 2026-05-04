@@ -201,6 +201,10 @@ export const TCIServiceTypes = [
         title: "Custom config based on a remote yaml file",
         value: "spec",
     },
+    {
+        title: "Maxscale",
+        value: "maxscale",
+    },
 ] as const;
 
 /** OS images available when provisioning servers via the `init` wizard. */
@@ -484,10 +488,6 @@ export type TCIConfigServiceSSL = {
 export type TCIConfigDatabaseSpec = {
     /** Database name to create. */
     name: string;
-    /** Database user to create and grant privileges to this database. */
-    user?: string;
-    /** Password for the database user. */
-    password?: string;
     /** Character set (e.g. `"utf8mb4"`). Only applies to MySQL/MariaDB. */
     charset?: string;
     /** Collation (e.g. `"utf8mb4_unicode_ci"`). Only applies to MySQL/MariaDB. */
@@ -587,6 +587,8 @@ export type TCIConfigHAProxyCheck = {
     rise?: number;
     /** Number of consecutive failures required to mark a server DOWN. Defaults to `3`. */
     fall?: number;
+    path?: string;
+    port?: number;
 };
 
 /**
@@ -651,6 +653,32 @@ export type TCIConfigHAProxyConfig = {
     timeout_client?: string;
     /** Server response timeout (e.g. `"30s"`). Defaults to `"30s"`. */
     timeout_server?: string;
+    pgbouncer?: TCIConfigPGBouncerConfig;
+};
+
+export type TCIConfigPGBouncerConfig = {
+    enabled: boolean;
+    /**
+     * Patroni primary IP or service name
+     */
+    db_host: string;
+    /**
+     * default 5432
+     */
+    db_port?: number;
+    /**
+     * default 6432
+     */
+    listen_port?: number;
+    pool_mode?: "transaction" | "session" | "statement";
+    max_client_conn?: number;
+    default_pool_size?: number;
+    min_pool_size?: number;
+    reserve_pool_size?: number;
+    admin_user?: string;
+    admin_password?: string;
+    databases?: { name: string }[];
+    users?: { username: string; password: string }[];
 };
 
 // ---------------------------------------------------------------------------
@@ -678,18 +706,47 @@ export type TCIConfigMariadbGaleraConfig = {
      * - `xtrabackup-v2` — Percona XtraBackup (for MySQL-based setups)
      */
     sst_method?: "mariabackup" | "rsync" | "xtrabackup-v2";
-    /** MariaDB root user password. */
-    root_password?: string;
-    /** MySQL-protocol port the cluster nodes listen on. Defaults to `3306`. */
+    /**
+     * MariaDB root user password. Required.
+     */
+    root_password: string;
+    /**
+     * MySQL-protocol port the cluster nodes listen on. Defaults to `3306`.
+     */
     port?: number;
-    /** Databases and users to create after cluster bootstrap. */
+    /**
+     * Databases and users to create after cluster bootstrap.
+     */
     databases?: TCIConfigDatabaseSpec[];
+    /**
+     * Databases and users to create after cluster bootstrap.
+     */
+    users?: TCIConfigDbUser[];
     /**
      * Address to bind the MySQL listener to.
      * Use `"0.0.0.0"` to accept connections from all interfaces (required for
      * MaxScale or HAProxy to reach private cluster IPs). Defaults to `"0.0.0.0"`.
      */
     bind_address?: string;
+};
+
+/**
+ * Db users
+ */
+export type TCIConfigDbUser = {
+    user: string;
+    password: string;
+    /**
+     * Allowed Host(s) for the user. Defaults to `%`. So if the host is `10.1.0.4`
+     * the full user name becomes `'username'@'10.1.0.4'`. Else it's `'username'@'%'`
+     */
+    hosts?: string | string[];
+    databases?: TCIConfigDbUserDatabase[];
+};
+
+export type TCIConfigDbUserDatabase = {
+    db_name: string;
+    privileges?: string[];
 };
 
 // ---------------------------------------------------------------------------
@@ -1131,10 +1188,18 @@ export type ServiceScriptObject = {
  */
 export interface ParsedDeploymentServiceConfig extends TCIConfigServiceConfig {
     service_name: string;
-    /** Set when this service was created via `duplicate_service_name`. */
+    /**
+     * Set when this service was created via `duplicate_service_name`.
+     */
     parent_service_name?: string;
-    /** Servers provisioned for this service, populated after the setup phase. */
+    /**
+     * Servers provisioned for this service, populated after the setup phase.
+     */
     servers?: NormalizedServerObject[];
+    /**
+     * The cluster number for the target service. Defaults to `0`
+     */
+    cluster_no: number;
 }
 
 /** Parameters passed to run-phase handlers (`commands/up/run/`). */
@@ -1199,4 +1264,10 @@ export type DeploymentAndServicesToUpdate = {
 export type ResponseObject = {
     success: boolean;
     msg?: string;
+};
+
+export type MaxscaleServerEntry = {
+    name: string;
+    ip: string;
+    port: number;
 };

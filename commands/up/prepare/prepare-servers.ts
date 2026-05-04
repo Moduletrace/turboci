@@ -17,12 +17,8 @@ export default async function ({
 
     const provider = deployment.provider;
 
-    const finalInstances =
-        typeof service.instances == "number" ? service.instances : 1;
-
     const servers = await grabNormalizedServers({
         provider,
-        instances: finalInstances,
         service,
         target_deployment: deployment,
     });

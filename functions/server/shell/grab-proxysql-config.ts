@@ -1,7 +1,4 @@
-import type {
-    ParsedDeploymentServiceConfig,
-    TCIGlobalConfig,
-} from "@/types";
+import type { ParsedDeploymentServiceConfig, TCIGlobalConfig } from "@/types";
 import grabNormalizedServers from "@/utils/grab-normalized-servers";
 
 type Params = {
@@ -47,16 +44,9 @@ export default async function grabProxySQLConfig({
         );
         if (!targetSvc) continue;
 
-        const instances =
-            typeof targetSvc.instances === "number" ? targetSvc.instances : 1;
-        const clusters =
-            typeof targetSvc.clusters === "number" ? targetSvc.clusters : 1;
-
         const servers = await grabNormalizedServers({
             provider: deployment.provider,
             service: targetSvc,
-            instances,
-            clusters,
             target_deployment: deployment,
             grab_children: true,
         });

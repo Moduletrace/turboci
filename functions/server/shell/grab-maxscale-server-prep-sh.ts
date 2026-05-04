@@ -2,6 +2,7 @@ import type { ParsedDeploymentServiceConfig, TCIGlobalConfig } from "@/types";
 import bunGrabPrivateIPsBulkScripts from "@/utils/bun-scripts/bun-grab-private-ips-bulk-scripts";
 import grabPrivateIPsBulkScripts from "@/utils/ssh/shell-scripts/grab-private-ips-bulk-scripts";
 import grabMaxScaleConfig from "./grab-maxscale-config";
+import { turboCiDepsCmds } from "../install-turboci-dependencies";
 
 type Params = {
     private_server_ips: string[];
@@ -31,19 +32,13 @@ export default async function grabMaxScaleServerPrepSH({
 }: Params) {
     let finalCmd = `set -e\n\n`;
 
-    if (!skip_init) {
-        finalCmd += `cat /root/.hushlogin || touch /root/.hushlogin\n`;
-        finalCmd += `apt update -qq\n`;
-        finalCmd += `command -v maxscale >/dev/null 2>&1 || (\n`;
-        // finalCmd += `    apt install -y wget gnupg2\n`;
-        // finalCmd += `    wget -q https://downloads.mariadb.com/MariaDB/mariadb_repo_setup -O /tmp/mariadb_repo_setup\n`;
-        // finalCmd += `    chmod +x /tmp/mariadb_repo_setup && /tmp/mariadb_repo_setup\n`;
-        // finalCmd += `    apt update -qq && apt install -y maxscale\n`;
-        finalCmd += `    apt install -y curl\n`;
-        finalCmd += `    curl -LsS https://r.mariadb.com/downloads/mariadb_repo_setup | bash\n`;
-        finalCmd += `    apt install -y maxscale-trial\n`;
-        finalCmd += `)\n\n`;
-    }
+    /**
+     * Temporary remove Hetzner Mirrors
+     */
+    // finalCmd += `\n`;
+    // finalCmd += `rm -rf /etc/apt/sources.list.d/*\n`;
+    // finalCmd += `rm -rf /var/lib/apt/lists/*\n`;
+    finalCmd += `\n`;
 
     const maxscaleCnf = await grabMaxScaleConfig({
         maxscale_service,
@@ -55,6 +50,19 @@ export default async function grabMaxScaleServerPrepSH({
         finalCmd += `${maxscaleCnf}`;
         finalCmd += `MAXSCALEEOF\n\n`;
     }
+
+    if (!skip_init) {
+        finalCmd += `cat /root/.hushlogin || touch /root/.hushlogin\n`;
+        finalCmd += `apt update -qq\n`;
+
+        finalCmd += `command -v maxscale >/dev/null 2>&1 || (\n`;
+        finalCmd += `    apt install -y curl\n`;
+        finalCmd += `    curl -LsS https://r.mariadb.com/downloads/mariadb_repo_setup | bash\n`;
+        finalCmd += `    apt install -y maxscale\n`;
+        finalCmd += `)\n\n`;
+    }
+
+    finalCmd += `${turboCiDepsCmds({ os: "debian", dependency: "docker" })}\n`;
 
     finalCmd += `systemctl enable maxscale\n`;
     finalCmd += `systemctl restart maxscale 2>/dev/null || systemctl start maxscale\n`;

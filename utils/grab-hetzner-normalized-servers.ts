@@ -10,14 +10,12 @@ import { _n } from "./numberfy";
 
 type Params = {
     service: ParsedDeploymentServiceConfig;
-    instances?: number;
     grab_children?: boolean;
     target_deployment: TCIGlobalConfig;
 };
 
 export default async function grabHetznerNormalizedServers({
     service,
-    instances,
     grab_children,
     target_deployment,
 }: Params): Promise<NormalizedServerObject[] | undefined> {
@@ -27,10 +25,6 @@ export default async function grabHetznerNormalizedServers({
     });
 
     let servers: NormalizedServerObject[] = [];
-
-    if (!_n(instances)) {
-        return undefined;
-    }
 
     const serversRes = await Hetzner.servers.list({
         label_selector: `${AppNames["TurboCILabelServiceNameKey"]}==${finalServiceName}`,

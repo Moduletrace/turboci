@@ -174,23 +174,23 @@ export default async function grabPostgresServerPrepSH({
                 `SELECT 'CREATE DATABASE ${db.name}' WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname='${db.name}')\\gexec`,
             );
 
-            if (db.user && db.password) {
-                initSqlLines.push(
-                    `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='${db.user}') THEN CREATE USER ${db.user} WITH ENCRYPTED PASSWORD '${db.password}'; END IF; END $$;`,
-                );
-                initSqlLines.push(
-                    `ALTER USER ${db.user} WITH ENCRYPTED PASSWORD '${db.password}';`,
-                );
-                initSqlLines.push(
-                    `GRANT ALL PRIVILEGES ON DATABASE ${db.name} TO ${db.user};`,
-                );
-                initSqlLines.push(`\\connect ${db.name}`);
-                initSqlLines.push(
-                    `GRANT USAGE, CREATE ON SCHEMA public TO ${db.user};`,
-                );
-                initSqlLines.push(`ALTER SCHEMA public OWNER TO ${db.user};`);
-                initSqlLines.push(`\\connect postgres`);
-            }
+            // if (db.user && db.password) {
+            //     initSqlLines.push(
+            //         `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='${db.user}') THEN CREATE USER ${db.user} WITH ENCRYPTED PASSWORD '${db.password}'; END IF; END $$;`,
+            //     );
+            //     initSqlLines.push(
+            //         `ALTER USER ${db.user} WITH ENCRYPTED PASSWORD '${db.password}';`,
+            //     );
+            //     initSqlLines.push(
+            //         `GRANT ALL PRIVILEGES ON DATABASE ${db.name} TO ${db.user};`,
+            //     );
+            //     initSqlLines.push(`\\connect ${db.name}`);
+            //     initSqlLines.push(
+            //         `GRANT USAGE, CREATE ON SCHEMA public TO ${db.user};`,
+            //     );
+            //     initSqlLines.push(`ALTER SCHEMA public OWNER TO ${db.user};`);
+            //     initSqlLines.push(`\\connect postgres`);
+            // }
         }
     }
 

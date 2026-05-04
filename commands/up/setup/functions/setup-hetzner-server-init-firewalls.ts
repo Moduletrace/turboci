@@ -27,7 +27,9 @@ export default async function ({ service, serviceName, deployment }: Params) {
         service.type == "load_balancer"
             ? (await Hetzner.firewalls.list({ name: loadBalancerFirewallName }))
                   ?.firewalls?.[0]
-            : service.type == "haproxy" || service.type == "proxysql"
+            : service.type == "haproxy" ||
+                service.type == "proxysql" ||
+                service.type == "maxscale"
               ? (
                     await Hetzner.firewalls.list({
                         name: dbLoadBalancerFirewallName,

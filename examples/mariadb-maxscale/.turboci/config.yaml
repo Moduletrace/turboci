@@ -14,35 +14,28 @@ deployments:
       services:
           db:
               type: mariadb-galera
-              instances: 3
+              instances: 2
+              # Keep it at 1 cluster. This is very important because all nodes
+              # need to update simulteneously. You still get 100% uptime.
               clusters: 1
-              server_type: cpx21
               mariadb_galera:
-                  cluster_name: turboci_galera
-                  sst_method: mariabackup
                   root_password: "${DB_ROOT_PASSWORD}"
-                  port: 3306
-                  bind_address: "0.0.0.0"
                   databases:
                       - name: myapp
-                        user: myapp_user
                         password: "${DB_APP_PASSWORD}"
                         charset: utf8mb4
                         collation: utf8mb4_unicode_ci
-              # TurboCI installs MariaDB + Galera, writes galera.cnf with all node
-              # IPs, and generates /usr/local/bin/tci-galera-start.sh.
-              # That script bootstraps the first node and joins the rest.
-              run:
-                  start:
-                      cmds:
-                          - /usr/local/bin/tci-galera-start.sh
-                  postflight:
-                      cmds:
-                          # Runs CREATE DATABASE / CREATE USER on the bootstrap node only
-                          - /usr/local/bin/tci-galera-init.sh
+                  users:
+                      - user: archben
+                        password: "${DB_APP_PASSWORD}"
+                        hosts:
+                            - "${DEV_MACHINE_IP}"
+                        databases:
+                            - db_name: myapp
+
               healthcheck:
-                  cmd: mysql -u root -p"${DB_ROOT_PASSWORD}" -e "SHOW STATUS LIKE 'wsrep_cluster_size';"
-                  test: "3"
+                  cmd: mariadb -N -s -e "SHOW STATUS LIKE 'wsrep_ready'"
+                  test: "ON"
               logs:
                   - journalctl -fu mariadb
 
@@ -50,30 +43,18 @@ deployments:
               type: maxscale
               instances: 1
               clusters: 1
-              server_type: cpx11
               maxscale:
                   target_services:
                       - service_name: db
                         port: 3306
                   listen_port: 3306
-                  router: readwritesplit
-                  monitor: galeramon
-                  admin_port: 8989
                   admin_user: admin
                   admin_password: "${MAXSCALE_ADMIN_PASSWORD}"
                   user: maxscale_monitor
                   password: "${MAXSCALE_MONITOR_PASSWORD}"
-              # No run scripts needed — TurboCI installs MaxScale, writes
-              # /etc/maxscale.cnf with the discovered backend IPs, and starts
-              # the service during the prepare phase.
-              #   healthcheck:
-              #       cmd: maxctrl list servers
-              #       test: "Master"
+              healthcheck:
+                  cmd: maxctrl list servers
+                  test: "Master"
               logs:
                   - journalctl -fu maxscale
-
-      env:
-          DB_ROOT_PASSWORD: "changeme"
-          DB_APP_PASSWORD: "changeme"
-          MAXSCALE_ADMIN_PASSWORD: "changeme"
-          MAXSCALE_MONITOR_PASSWORD: "changeme"
+                  - tail -n 20 /var/log/maxscale/maxscale.log

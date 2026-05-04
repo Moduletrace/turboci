@@ -15,7 +15,6 @@ import grabAppNames from "./grab-app-names";
 import grabServerInstanceName from "./grab-server-instance-name";
 import AppData from "@/data/app-data";
 import loadEnvs from "./load-envs";
-import yamlReplaceEnvs from "./yaml-replace-envs";
 
 type Params = {
     options: TCICommandOptions;

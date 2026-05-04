@@ -5,7 +5,17 @@ type Params = {
     private_server_ips: string[];
     script: string;
     work_dir?: string;
+    /**
+     * Whether to run instances in parallel. If not
+     * each instance will run after the previous is
+     * complete
+     */
     parrallel?: boolean;
+    /**
+     * Whether to run all at the same time, or run the
+     * first instance first, and then the rest
+     */
+    async?: boolean;
 };
 
 export default function grabPrivateIPsBulkScripts({
@@ -13,6 +23,7 @@ export default function grabPrivateIPsBulkScripts({
     script,
     work_dir,
     parrallel,
+    async,
 }: Params) {
     const { relayServerSshPrivateKeyFile } = grabDirNames();
 
@@ -49,12 +60,20 @@ export default function grabPrivateIPsBulkScripts({
     finalCmd += `}\n`;
 
     if (parrallel) {
-        finalCmd += `\nfirst_host="\${REMOTE_HOSTS[0]}"\n`;
-        finalCmd += `run "$first_host" || exit 1\n`;
+        if (!async) {
+            finalCmd += `\nfirst_host="\${REMOTE_HOSTS[0]}"\n`;
+            finalCmd += `run "$first_host" || exit 1\n`;
+        }
 
         finalCmd += `\ncount=0\n`;
         finalCmd += `pids=()\n`;
-        finalCmd += `for host in "\${REMOTE_HOSTS[@]:1}"; do\n`;
+
+        if (async) {
+            finalCmd += `for host in "\${REMOTE_HOSTS[@]:0}"; do\n`;
+        } else {
+            finalCmd += `for host in "\${REMOTE_HOSTS[@]:1}"; do\n`;
+        }
+
         finalCmd += `    run $host &\n`;
         finalCmd += `    pids+=($!)\n`;
         finalCmd += `    count=$((count + 1))\n`;

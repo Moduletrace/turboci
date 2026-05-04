@@ -395,6 +395,105 @@
                                             "title": "mode",
                                             "type": "string"
                                         },
+                                        "pgbouncer": {
+                                            "properties": {
+                                                "admin_password": {
+                                                    "title": "admin_password",
+                                                    "type": "string"
+                                                },
+                                                "admin_user": {
+                                                    "title": "admin_user",
+                                                    "type": "string"
+                                                },
+                                                "databases": {
+                                                    "items": {
+                                                        "properties": {
+                                                            "name": {
+                                                                "title": "name",
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "name"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "title": "databases",
+                                                    "type": "array"
+                                                },
+                                                "db_host": {
+                                                    "description": "Patroni primary IP or service name",
+                                                    "title": "db_host",
+                                                    "type": "string"
+                                                },
+                                                "db_port": {
+                                                    "description": "default 5432",
+                                                    "title": "db_port",
+                                                    "type": "number"
+                                                },
+                                                "default_pool_size": {
+                                                    "title": "default_pool_size",
+                                                    "type": "number"
+                                                },
+                                                "enabled": {
+                                                    "title": "enabled",
+                                                    "type": "boolean"
+                                                },
+                                                "listen_port": {
+                                                    "description": "default 6432",
+                                                    "title": "listen_port",
+                                                    "type": "number"
+                                                },
+                                                "max_client_conn": {
+                                                    "title": "max_client_conn",
+                                                    "type": "number"
+                                                },
+                                                "min_pool_size": {
+                                                    "title": "min_pool_size",
+                                                    "type": "number"
+                                                },
+                                                "pool_mode": {
+                                                    "enum": [
+                                                        "session",
+                                                        "statement",
+                                                        "transaction"
+                                                    ],
+                                                    "title": "pool_mode",
+                                                    "type": "string"
+                                                },
+                                                "reserve_pool_size": {
+                                                    "title": "reserve_pool_size",
+                                                    "type": "number"
+                                                },
+                                                "users": {
+                                                    "items": {
+                                                        "properties": {
+                                                            "password": {
+                                                                "title": "password",
+                                                                "type": "string"
+                                                            },
+                                                            "username": {
+                                                                "title": "username",
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "password",
+                                                            "username"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "title": "users",
+                                                    "type": "array"
+                                                }
+                                            },
+                                            "required": [
+                                                "db_host",
+                                                "enabled"
+                                            ],
+                                            "title": "pgbouncer",
+                                            "type": "object"
+                                        },
                                         "stats_password": {
                                             "description": "Password for the HAProxy statistics page.",
                                             "title": "stats_password",
@@ -432,6 +531,14 @@
                                                                 "description": "Time between health checks (e.g. `\"2s\"`, `\"500ms\"`).\nDefaults to `\"2s\"`.",
                                                                 "title": "interval",
                                                                 "type": "string"
+                                                            },
+                                                            "path": {
+                                                                "title": "path",
+                                                                "type": "string"
+                                                            },
+                                                            "port": {
+                                                                "title": "port",
+                                                                "type": "number"
                                                             },
                                                             "rise": {
                                                                 "description": "Number of consecutive successes required to mark a server UP. Defaults to `2`.",
@@ -570,16 +677,6 @@
                                                         "description": "Database name to create.",
                                                         "title": "name",
                                                         "type": "string"
-                                                    },
-                                                    "password": {
-                                                        "description": "Password for the database user.",
-                                                        "title": "password",
-                                                        "type": "string"
-                                                    },
-                                                    "user": {
-                                                        "description": "Database user to create and grant privileges to this database.",
-                                                        "title": "user",
-                                                        "type": "string"
                                                     }
                                                 },
                                                 "required": [
@@ -596,7 +693,7 @@
                                             "type": "number"
                                         },
                                         "root_password": {
-                                            "description": "MariaDB root user password.",
+                                            "description": "MariaDB root user password. Required.",
                                             "title": "root_password",
                                             "type": "string"
                                         },
@@ -609,8 +706,72 @@
                                             ],
                                             "title": "sst_method",
                                             "type": "string"
+                                        },
+                                        "users": {
+                                            "description": "Databases and users to create after cluster bootstrap.",
+                                            "items": {
+                                                "description": "Db users",
+                                                "properties": {
+                                                    "databases": {
+                                                        "items": {
+                                                            "properties": {
+                                                                "db_name": {
+                                                                    "title": "db_name",
+                                                                    "type": "string"
+                                                                },
+                                                                "privileges": {
+                                                                    "items": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "title": "privileges",
+                                                                    "type": "array"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "db_name"
+                                                            ],
+                                                            "type": "object"
+                                                        },
+                                                        "title": "databases",
+                                                        "type": "array"
+                                                    },
+                                                    "hosts": {
+                                                        "anyOf": [
+                                                            {
+                                                                "items": {
+                                                                    "type": "string"
+                                                                },
+                                                                "type": "array"
+                                                            },
+                                                            {
+                                                                "type": "string"
+                                                            }
+                                                        ],
+                                                        "description": "Allowed Host(s) for the user. Defaults to `%`. So if the host is `10.1.0.4`\nthe full user name becomes `'username'@'10.1.0.4'`. Else it's `'username'@'%'`",
+                                                        "title": "hosts"
+                                                    },
+                                                    "password": {
+                                                        "title": "password",
+                                                        "type": "string"
+                                                    },
+                                                    "user": {
+                                                        "title": "user",
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "password",
+                                                    "user"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            "title": "users",
+                                            "type": "array"
                                         }
                                     },
+                                    "required": [
+                                        "root_password"
+                                    ],
                                     "title": "mariadb_galera",
                                     "type": "object"
                                 },
@@ -733,16 +894,6 @@
                                                         "description": "Database name to create.",
                                                         "title": "name",
                                                         "type": "string"
-                                                    },
-                                                    "password": {
-                                                        "description": "Password for the database user.",
-                                                        "title": "password",
-                                                        "type": "string"
-                                                    },
-                                                    "user": {
-                                                        "description": "Database user to create and grant privileges to this database.",
-                                                        "title": "user",
-                                                        "type": "string"
                                                     }
                                                 },
                                                 "required": [
@@ -825,16 +976,6 @@
                                                     "name": {
                                                         "description": "Database name to create.",
                                                         "title": "name",
-                                                        "type": "string"
-                                                    },
-                                                    "password": {
-                                                        "description": "Password for the database user.",
-                                                        "title": "password",
-                                                        "type": "string"
-                                                    },
-                                                    "user": {
-                                                        "description": "Database user to create and grant privileges to this database.",
-                                                        "title": "user",
                                                         "type": "string"
                                                     }
                                                 },
@@ -1368,6 +1509,7 @@
                                         "haproxy",
                                         "load_balancer",
                                         "mariadb-galera",
+                                        "maxscale",
                                         "mysql",
                                         "postgres",
                                         "proxysql",
@@ -1375,12 +1517,53 @@
                                     ],
                                     "title": "type",
                                     "type": "string"
+                                },
+                                "volumes": {
+                                    "description": "Volumes to attach to this service. Must be defined in the top\nlevel deployment config first.",
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "title": "volumes",
+                                    "type": "array"
                                 }
                             },
                             "type": "object"
                         },
                         "description": "Map of service name → service config. Key becomes the service identifier.",
                         "title": "services",
+                        "type": "object"
+                    },
+                    "volumes": {
+                        "additionalProperties": {
+                            "properties": {
+                                "format": {
+                                    "description": "Volume Format. Defaults to `ext4`",
+                                    "enum": [
+                                        "ext4",
+                                        "xfs"
+                                    ],
+                                    "title": "format",
+                                    "type": "string"
+                                },
+                                "mount_dir": {
+                                    "description": "Directory to mount the volume on the attached server.",
+                                    "title": "mount_dir",
+                                    "type": "string"
+                                },
+                                "size": {
+                                    "description": "Size of the volume in gigabytes.",
+                                    "title": "size",
+                                    "type": "number"
+                                }
+                            },
+                            "required": [
+                                "mount_dir",
+                                "size"
+                            ],
+                            "type": "object"
+                        },
+                        "description": "Volumes to setup",
+                        "title": "volumes",
                         "type": "object"
                     }
                 },
@@ -1789,6 +1972,105 @@
                                                     "title": "mode",
                                                     "type": "string"
                                                 },
+                                                "pgbouncer": {
+                                                    "properties": {
+                                                        "admin_password": {
+                                                            "title": "admin_password",
+                                                            "type": "string"
+                                                        },
+                                                        "admin_user": {
+                                                            "title": "admin_user",
+                                                            "type": "string"
+                                                        },
+                                                        "databases": {
+                                                            "items": {
+                                                                "properties": {
+                                                                    "name": {
+                                                                        "title": "name",
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "name"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            "title": "databases",
+                                                            "type": "array"
+                                                        },
+                                                        "db_host": {
+                                                            "description": "Patroni primary IP or service name",
+                                                            "title": "db_host",
+                                                            "type": "string"
+                                                        },
+                                                        "db_port": {
+                                                            "description": "default 5432",
+                                                            "title": "db_port",
+                                                            "type": "number"
+                                                        },
+                                                        "default_pool_size": {
+                                                            "title": "default_pool_size",
+                                                            "type": "number"
+                                                        },
+                                                        "enabled": {
+                                                            "title": "enabled",
+                                                            "type": "boolean"
+                                                        },
+                                                        "listen_port": {
+                                                            "description": "default 6432",
+                                                            "title": "listen_port",
+                                                            "type": "number"
+                                                        },
+                                                        "max_client_conn": {
+                                                            "title": "max_client_conn",
+                                                            "type": "number"
+                                                        },
+                                                        "min_pool_size": {
+                                                            "title": "min_pool_size",
+                                                            "type": "number"
+                                                        },
+                                                        "pool_mode": {
+                                                            "enum": [
+                                                                "session",
+                                                                "statement",
+                                                                "transaction"
+                                                            ],
+                                                            "title": "pool_mode",
+                                                            "type": "string"
+                                                        },
+                                                        "reserve_pool_size": {
+                                                            "title": "reserve_pool_size",
+                                                            "type": "number"
+                                                        },
+                                                        "users": {
+                                                            "items": {
+                                                                "properties": {
+                                                                    "password": {
+                                                                        "title": "password",
+                                                                        "type": "string"
+                                                                    },
+                                                                    "username": {
+                                                                        "title": "username",
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "password",
+                                                                    "username"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            "title": "users",
+                                                            "type": "array"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "db_host",
+                                                        "enabled"
+                                                    ],
+                                                    "title": "pgbouncer",
+                                                    "type": "object"
+                                                },
                                                 "stats_password": {
                                                     "description": "Password for the HAProxy statistics page.",
                                                     "title": "stats_password",
@@ -1826,6 +2108,14 @@
                                                                         "description": "Time between health checks (e.g. `\"2s\"`, `\"500ms\"`).\nDefaults to `\"2s\"`.",
                                                                         "title": "interval",
                                                                         "type": "string"
+                                                                    },
+                                                                    "path": {
+                                                                        "title": "path",
+                                                                        "type": "string"
+                                                                    },
+                                                                    "port": {
+                                                                        "title": "port",
+                                                                        "type": "number"
                                                                     },
                                                                     "rise": {
                                                                         "description": "Number of consecutive successes required to mark a server UP. Defaults to `2`.",
@@ -1964,16 +2254,6 @@
                                                                 "description": "Database name to create.",
                                                                 "title": "name",
                                                                 "type": "string"
-                                                            },
-                                                            "password": {
-                                                                "description": "Password for the database user.",
-                                                                "title": "password",
-                                                                "type": "string"
-                                                            },
-                                                            "user": {
-                                                                "description": "Database user to create and grant privileges to this database.",
-                                                                "title": "user",
-                                                                "type": "string"
                                                             }
                                                         },
                                                         "required": [
@@ -1990,7 +2270,7 @@
                                                     "type": "number"
                                                 },
                                                 "root_password": {
-                                                    "description": "MariaDB root user password.",
+                                                    "description": "MariaDB root user password. Required.",
                                                     "title": "root_password",
                                                     "type": "string"
                                                 },
@@ -2003,8 +2283,72 @@
                                                     ],
                                                     "title": "sst_method",
                                                     "type": "string"
+                                                },
+                                                "users": {
+                                                    "description": "Databases and users to create after cluster bootstrap.",
+                                                    "items": {
+                                                        "description": "Db users",
+                                                        "properties": {
+                                                            "databases": {
+                                                                "items": {
+                                                                    "properties": {
+                                                                        "db_name": {
+                                                                            "title": "db_name",
+                                                                            "type": "string"
+                                                                        },
+                                                                        "privileges": {
+                                                                            "items": {
+                                                                                "type": "string"
+                                                                            },
+                                                                            "title": "privileges",
+                                                                            "type": "array"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "db_name"
+                                                                    ],
+                                                                    "type": "object"
+                                                                },
+                                                                "title": "databases",
+                                                                "type": "array"
+                                                            },
+                                                            "hosts": {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "items": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "type": "array"
+                                                                    },
+                                                                    {
+                                                                        "type": "string"
+                                                                    }
+                                                                ],
+                                                                "description": "Allowed Host(s) for the user. Defaults to `%`. So if the host is `10.1.0.4`\nthe full user name becomes `'username'@'10.1.0.4'`. Else it's `'username'@'%'`",
+                                                                "title": "hosts"
+                                                            },
+                                                            "password": {
+                                                                "title": "password",
+                                                                "type": "string"
+                                                            },
+                                                            "user": {
+                                                                "title": "user",
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "password",
+                                                            "user"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "title": "users",
+                                                    "type": "array"
                                                 }
                                             },
+                                            "required": [
+                                                "root_password"
+                                            ],
                                             "title": "mariadb_galera",
                                             "type": "object"
                                         },
@@ -2127,16 +2471,6 @@
                                                                 "description": "Database name to create.",
                                                                 "title": "name",
                                                                 "type": "string"
-                                                            },
-                                                            "password": {
-                                                                "description": "Password for the database user.",
-                                                                "title": "password",
-                                                                "type": "string"
-                                                            },
-                                                            "user": {
-                                                                "description": "Database user to create and grant privileges to this database.",
-                                                                "title": "user",
-                                                                "type": "string"
                                                             }
                                                         },
                                                         "required": [
@@ -2219,16 +2553,6 @@
                                                             "name": {
                                                                 "description": "Database name to create.",
                                                                 "title": "name",
-                                                                "type": "string"
-                                                            },
-                                                            "password": {
-                                                                "description": "Password for the database user.",
-                                                                "title": "password",
-                                                                "type": "string"
-                                                            },
-                                                            "user": {
-                                                                "description": "Database user to create and grant privileges to this database.",
-                                                                "title": "user",
                                                                 "type": "string"
                                                             }
                                                         },
@@ -2762,6 +3086,7 @@
                                                 "haproxy",
                                                 "load_balancer",
                                                 "mariadb-galera",
+                                                "maxscale",
                                                 "mysql",
                                                 "postgres",
                                                 "proxysql",
@@ -2769,12 +3094,53 @@
                                             ],
                                             "title": "type",
                                             "type": "string"
+                                        },
+                                        "volumes": {
+                                            "description": "Volumes to attach to this service. Must be defined in the top\nlevel deployment config first.",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "title": "volumes",
+                                            "type": "array"
                                         }
                                     },
                                     "type": "object"
                                 },
                                 "description": "Map of service name → service config. Key becomes the service identifier.",
                                 "title": "services",
+                                "type": "object"
+                            },
+                            "volumes": {
+                                "additionalProperties": {
+                                    "properties": {
+                                        "format": {
+                                            "description": "Volume Format. Defaults to `ext4`",
+                                            "enum": [
+                                                "ext4",
+                                                "xfs"
+                                            ],
+                                            "title": "format",
+                                            "type": "string"
+                                        },
+                                        "mount_dir": {
+                                            "description": "Directory to mount the volume on the attached server.",
+                                            "title": "mount_dir",
+                                            "type": "string"
+                                        },
+                                        "size": {
+                                            "description": "Size of the volume in gigabytes.",
+                                            "title": "size",
+                                            "type": "number"
+                                        }
+                                    },
+                                    "required": [
+                                        "mount_dir",
+                                        "size"
+                                    ],
+                                    "type": "object"
+                                },
+                                "description": "Volumes to setup",
+                                "title": "volumes",
                                 "type": "object"
                             }
                         },

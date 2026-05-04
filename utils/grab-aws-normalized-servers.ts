@@ -10,14 +10,12 @@ import TurboCIAWS from "@/platforms/aws";
 
 type Params = {
     service: ParsedDeploymentServiceConfig;
-    instances?: number;
     grab_children?: boolean;
     target_deployment: TCIGlobalConfig;
 };
 
 export default async function grabAWSNormalizedServers({
     service,
-    instances,
     grab_children,
     target_deployment,
 }: Params): Promise<NormalizedServerObject[] | undefined> {
@@ -27,10 +25,6 @@ export default async function grabAWSNormalizedServers({
     });
 
     let servers: NormalizedServerObject[] = [];
-
-    if (!_n(instances)) {
-        return undefined;
-    }
 
     const awsServersRes = await TurboCIAWS.servers.list({
         region: target_deployment.location!,

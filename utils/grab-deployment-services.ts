@@ -64,6 +64,7 @@ export default function grabDeploymentServices({
         let newService: ParsedDeploymentServiceConfig = {
             ...targetService,
             service_name: serviceName,
+            cluster_no: 0,
         };
 
         services.push(_.cloneDeep(newService));
@@ -74,10 +75,11 @@ export default function grabDeploymentServices({
 
                 if (c == 0) continue;
 
-                const newService = {
+                const newService: ParsedDeploymentServiceConfig = {
                     ...targetService,
                     service_name: clusterServiceName,
                     parent_service_name: serviceName,
+                    cluster_no: c,
                 };
 
                 delete newService.clusters;

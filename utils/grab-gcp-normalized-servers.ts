@@ -10,14 +10,12 @@ import TurboCIGCP from "@/platforms/gcp";
 
 type Params = {
     service: ParsedDeploymentServiceConfig;
-    instances?: number;
     grab_children?: boolean;
     target_deployment: TCIGlobalConfig;
 };
 
 export default async function grabGCPNormalizedServers({
     service,
-    instances,
     grab_children,
     target_deployment,
 }: Params): Promise<NormalizedServerObject[] | undefined> {
@@ -27,10 +25,6 @@ export default async function grabGCPNormalizedServers({
     });
 
     let servers: NormalizedServerObject[] = [];
-
-    if (!_n(instances)) {
-        return undefined;
-    }
 
     const zone = target_deployment.location!;
 
