@@ -37,7 +37,6 @@ export default async function grabMaxScaleConfig({
         if (!targetSvc) continue;
 
         const servers = await grabNormalizedServers({
-            provider: deployment.provider,
             service: targetSvc,
             target_deployment: deployment,
             grab_children: true,
@@ -110,9 +109,10 @@ export default async function grabMaxScaleConfig({
     cnf += `servers=${serversStr}\n`;
     cnf += `user=${user}\n`;
     cnf += `password=${password}\n`;
-    cnf += `master_failure_mode=fail_on_write\n`;
+    cnf += `master_failure_mode=error_on_write\n`;
     cnf += `slave_selection_criteria=LEAST_CURRENT_OPERATIONS\n`;
     cnf += `max_replication_lag=30s\n`;
+    cnf += `transaction_replay=true\n`;
 
     /**
      * # Read-Write Listener Config

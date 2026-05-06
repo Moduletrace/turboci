@@ -14,10 +14,13 @@ deployments:
       services:
           db:
               type: mariadb-galera
-              instances: 2
-              # Keep it at 1 cluster. This is very important because all nodes
-              # need to update simulteneously. You still get 100% uptime.
-              clusters: 1
+              # Keep the instances at 1 for as close to
+              # zero downtime as possible.
+              instances: 1
+              # Clusters should be the only changing variable
+              # for horizontal scaling. Minimum for mariadb
+              # galera is 3. And it *MUST be an odd number.
+              clusters: 3
               mariadb_galera:
                   root_password: "${DB_ROOT_PASSWORD}"
                   databases:
@@ -32,9 +35,13 @@ deployments:
                             - "${DEV_MACHINE_IP}"
                         databases:
                             - db_name: myapp
+              run:
+                  start:
+                      cmds:
+                          - /usr/local/bin/tci-galera-start.sh
 
               healthcheck:
-                  cmd: mariadb -N -s -e "SHOW STATUS LIKE 'wsrep_ready'"
+                  cmd: mariadb -u root -p"${DB_ROOT_PASSWORD}" -e "SHOW STATUS LIKE 'wsrep_ready'"
                   test: "ON"
               logs:
                   - journalctl -fu mariadb

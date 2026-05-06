@@ -23,6 +23,8 @@ const AppData = {
      */
     HetznerNamesMaxLength: 63,
     DefaultHetznerOS: "debian-12",
+
+    DefaultInitTimeoutMilliseconds: 60000 * 10, // 10 minutes
 } as const;
 
 export default AppData;

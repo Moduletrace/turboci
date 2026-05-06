@@ -12,6 +12,10 @@ import type { DefaultPrepParams, ResponseObject } from "@/types";
 import grabDockerServerPrepSH from "@/functions/server/shell/grab-docker-server-prep-sh";
 import grabSpecServerPrepSH from "@/functions/server/shell/grab-spec-server-prep-sh";
 import grabPostgresPatroniServerPrepSH from "@/functions/server/shell/grab-postgres-patroni-server-prep-sh";
+import AppData from "@/data/app-data";
+import grabDirNames from "@/utils/grab-dir-names";
+
+const { serviceBashrcDir } = grabDirNames();
 
 export default async function (
     params: DefaultPrepParams,
@@ -133,6 +137,8 @@ export default async function (
         };
     }
 
+    const timeout = AppData["DefaultInitTimeoutMilliseconds"];
+
     if (Array.isArray(finalCmd)) {
         for (let i = 0; i < finalCmd.length; i++) {
             const cmd = finalCmd[i];
@@ -140,13 +146,17 @@ export default async function (
             if (!cmd) continue;
 
             const res = await relayExecSSH({
-                cmd,
+                cmd: [cmd],
                 deployment,
                 log_error: true,
                 bun: true,
+                options: {
+                    timeout,
+                    // stdio: "inherit",
+                },
             });
 
-            if (!res) {
+            if (!res && i > 0) {
                 console.error(
                     `\`${service.service_name}\` service prep failed!`,
                 );
@@ -155,11 +165,14 @@ export default async function (
         }
     } else {
         const res = await relayExecSSH({
-            cmd: finalCmd,
+            cmd: [finalCmd],
             deployment,
             log_error: true,
             bun: true,
-            // options: { stdio: "inherit" },
+            options: {
+                timeout,
+                // stdio: "inherit"
+            },
         });
 
         if (!res) {

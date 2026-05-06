@@ -8,6 +8,9 @@ import azure from "./azure";
 import execSSH from "@/utils/ssh/exec-ssh";
 import grabDirNames from "@/utils/grab-dir-names";
 import syncRemoteDirs from "../sync-remote-dirs";
+import grabBashrcSetupSh from "../grab-bashrc-setup-sh";
+import AppData from "@/data/app-data";
+import grabSSHPrefix from "@/utils/ssh/grab-ssh-prefix";
 
 type Params = {
     deployment: Omit<TCIConfigDeployment, "services">;
@@ -24,7 +27,7 @@ export default async function grabSSHRelayServer({
         global.RELAY_SERVERS[`${deployment.deployment_name}`];
 
     if (existingRelaySrv?.ip) {
-        relaySrv = existingRelaySrv;
+        return existingRelaySrv;
     } else {
         global.ORA_SPINNER.text = `Grabbing Relay Server ...`;
         global.ORA_SPINNER.start();
@@ -66,8 +69,6 @@ export default async function grabSSHRelayServer({
             default:
                 break;
         }
-
-        global.ORA_SPINNER.stop();
     }
 
     if (init && relaySrv?.ip) {
@@ -76,23 +77,7 @@ export default async function grabSSHRelayServer({
 
         let initSh = grabSSHRelayServerInitSH({ deployment });
 
-        const {
-            relayServerSSHDir,
-            relayServerBunScriptsDir,
-            relayShDir,
-            relayConfigDir,
-            sshDir,
-        } = grabDirNames();
-
-        await execSSH({
-            cmd: [
-                `mkdir -p ${relayServerSSHDir}\n`,
-                `mkdir -p ${relayServerBunScriptsDir}\n`,
-                `mkdir -p ${relayConfigDir}\n`,
-                `mkdir -p ${relayShDir}\n`,
-            ],
-            ip: relaySrv.ip,
-        });
+        const { relayServerSSHDir, sshDir } = grabDirNames();
 
         const initRelay = await relayExecSSH({
             cmd: initSh,
@@ -112,9 +97,51 @@ export default async function grabSSHRelayServer({
             src: sshDir,
             ip: relaySrv.ip,
         });
-
-        global.ORA_SPINNER.stop();
     }
+
+    if (relaySrv?.ip) {
+        global.ORA_SPINNER.text = `Relay Server post init ...`;
+        global.ORA_SPINNER.start();
+
+        const {
+            relayServerSSHDir,
+            relayServerBunScriptsDir,
+            relayShDir,
+            relayConfigDir,
+            serviceBashrcDir,
+            relayServerSshPrivateKeyFile,
+        } = grabDirNames();
+
+        let cmd = ``;
+
+        cmd += `mkdir -p ${relayServerSSHDir}\n`;
+        cmd += `mkdir -p ${relayServerBunScriptsDir}\n`;
+        cmd += `mkdir -p ${relayConfigDir}\n`;
+        cmd += `mkdir -p ${relayShDir}\n`;
+
+        cmd += `${grabBashrcSetupSh()}\n`;
+
+        const ssh_prefix = grabSSHPrefix({
+            key_file: relayServerSshPrivateKeyFile,
+        });
+
+        cmd += `cat > ${serviceBashrcDir}/cmds.sh << 'FREQUENTCMDSEOF'\n`;
+        cmd += `\n`;
+        cmd += `# Function to SSH into private network servers\n`;
+        cmd += `RELAY_SSH() {\n`;
+        cmd += `    ${ssh_prefix} root@"$1"\n`;
+        cmd += `}\n`;
+        cmd += `FREQUENTCMDSEOF\n`;
+
+        await relayExecSSH({
+            cmd,
+            deployment,
+            options: { timeout: AppData["DefaultInitTimeoutMilliseconds"] },
+        });
+    }
+
+    global.ORA_SPINNER.succeed(`Relay Server setup complete!`);
+    global.ORA_SPINNER.stop();
 
     return relaySrv;
 }

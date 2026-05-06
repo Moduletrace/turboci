@@ -46,7 +46,7 @@ export default async function execSSH(
                   ? cmd.join("\n")
                   : undefined;
 
-        finalCmd += ` << 'TURBOCIEXEC' \n${parsedCmd}\nTURBOCIEXEC`;
+        finalCmd += ` << 'TURBOCIEXEC' \n${parsedCmd}\nTURBOCIEXEC\n`;
 
         if (debug) {
             console.log("finalCmd", finalCmd);

@@ -50,7 +50,7 @@ export default async function grabHAProxyPGBouncerServerPrepSH({
     // INSTALLATION
     // -------------------------------------------------------------------------
     if (!skip_init) {
-        finalCmd += `cat /root/.hushlogin || touch /root/.hushlogin\n`;
+        finalCmd += `touch /root/.hushlogin\n`;
         finalCmd += `apt-get update -qq\n`;
         finalCmd += `command -v haproxy >/dev/null 2>&1 || apt-get install -y haproxy\n`;
         if (pgBouncer?.enabled) {

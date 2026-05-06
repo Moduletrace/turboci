@@ -44,7 +44,7 @@ export default async function grabLoadBalancerServerPrepSH({
 
     if (!skip_init) {
         finalCmd += `cat /root/.bashrc | grep "ll='ls -laF'" || printf "\nalias ll='ls -laF'\n" >> /root/.bashrc\n`;
-        finalCmd += `cat /root/.hushlogin || touch /root/.hushlogin\n`;
+        finalCmd += `touch /root/.hushlogin\n`;
         finalCmd += `apt update\n`;
         finalCmd += `command -v nginx >/dev/null 2>&1 || apt install -y nginx\n`;
         finalCmd += `command -v certbot >/dev/null 2>&1 || apt install -y certbot\n`;

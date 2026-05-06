@@ -67,7 +67,7 @@ export default async function syncRelayRemoteDirs({
         : final_relay_dst;
 
     try {
-        let cmd = `rsync -avz`;
+        let cmd = `rsync -az`;
         cmd += ` -e '${grabSSHPrefix()}'`;
 
         if (del) {
@@ -108,7 +108,7 @@ export default async function syncRelayRemoteDirs({
         /**
          * # Sync relay to private servers
          */
-        let syncRelayToPrivateCmd = `rsync -avz`;
+        let syncRelayToPrivateCmd = `rsync -az`;
 
         const relaySSHPrefix = grabSSHPrefix({
             key_file: relayServerSshPrivateKeyFile,

@@ -1,7 +1,4 @@
-import type {
-    ParsedDeploymentServiceConfig,
-    TCIGlobalConfig,
-} from "@/types";
+import type { ParsedDeploymentServiceConfig, TCIGlobalConfig } from "@/types";
 import bunGrabPrivateIPsBulkScripts from "@/utils/bun-scripts/bun-grab-private-ips-bulk-scripts";
 import grabPrivateIPsBulkScripts from "@/utils/ssh/shell-scripts/grab-private-ips-bulk-scripts";
 import grabHAProxyConfig from "./grab-haproxy-config";
@@ -40,7 +37,7 @@ export default async function grabHAProxyServerPrepSH({
     let finalCmd = `set -e\n\n`;
 
     if (!skip_init) {
-        finalCmd += `cat /root/.hushlogin || touch /root/.hushlogin\n`;
+        finalCmd += `touch /root/.hushlogin\n`;
         finalCmd += `apt update -qq\n`;
         finalCmd += `command -v haproxy >/dev/null 2>&1 || apt install -y haproxy\n\n`;
     }

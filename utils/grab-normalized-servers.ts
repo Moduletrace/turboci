@@ -11,21 +11,19 @@ import grabGCPNormalizedServers from "./grab-gcp-normalized-servers";
 import grabAzureNormalizedServers from "./grab-azure-normalized-servers";
 
 type Params = {
-    provider: (typeof CloudProviders)[number]["value"];
     service: ParsedDeploymentServiceConfig;
     grab_children?: boolean;
     target_deployment: TCIGlobalConfig;
 };
 
 export default async function grabNormalizedServers({
-    provider,
     service,
     grab_children,
     target_deployment,
 }: Params): Promise<NormalizedServerObject[] | undefined> {
     let servers: NormalizedServerObject[] = [];
 
-    switch (provider) {
+    switch (target_deployment.provider) {
         case "hetzner":
             return await grabHetznerNormalizedServers({
                 service,

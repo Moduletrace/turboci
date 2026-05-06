@@ -68,7 +68,6 @@ export default async function grabHAProxyConfig({
             if (!targetSvc) continue;
 
             const servers = await grabNormalizedServers({
-                provider: deployment.provider,
                 service: targetSvc,
                 target_deployment: deployment,
                 grab_children: true,
@@ -105,7 +104,6 @@ export default async function grabHAProxyConfig({
             if (!targetSvc) continue;
 
             const servers = await grabNormalizedServers({
-                provider: deployment.provider,
                 service: targetSvc,
                 target_deployment: deployment,
                 grab_children: true,

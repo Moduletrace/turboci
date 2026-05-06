@@ -33,6 +33,15 @@ declare global {
     var LOAD_BALANCERS: TCIConfigService[];
     var NEW_SERVERS: NormalizedServerObject[];
     var UPDATE_LOAD_BALANCERS: boolean;
+    /**
+     * If this is running after the normal service preparation
+     * step. This prepares the servers again, but this time
+     * goes through server updates that weren't effected in the
+     * first pass. This is useful for `mariadb-galera` and `mysql`
+     * service types that need to skip deleting the primary node
+     * on server upgrade/downgrade to retain 100% uptime.
+     */
+    var RERUN_SERVICE: boolean;
     var UPDATED_LOAD_BALANCERS: { [k: string]: boolean };
     var CURRENT_DEPLOYMENT_INDEX: number;
     var CURRENT_SERVICE_INDEX: number;

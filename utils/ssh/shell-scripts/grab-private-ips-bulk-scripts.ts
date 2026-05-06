@@ -56,7 +56,7 @@ export default function grabPrivateIPsBulkScripts({
         finalCmd += `cd ${work_dir}\n`;
     }
     finalCmd += `${script}\n`;
-    finalCmd += `TURBOCIEXEC\n`;
+    finalCmd += `\nTURBOCIEXEC\n`;
     finalCmd += `}\n`;
 
     if (parrallel) {

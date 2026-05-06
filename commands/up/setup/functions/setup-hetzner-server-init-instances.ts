@@ -1,8 +1,7 @@
 import Hetzner from "../../../../platforms/hetzner";
 import type {
+    ParsedDeploymentServiceConfig,
     TCIConfigDeployment,
-    TCIConfigServiceConfig,
-    TCIServiceTypes,
 } from "../../../../types";
 import { AppNames } from "../../../../utils/app-names";
 import grabAppNames from "../../../../utils/grab-app-names";
@@ -14,12 +13,11 @@ import AppData from "@/data/app-data";
 import type { HetznerImages } from "@/platforms/hetzner/types/images";
 import hetznerGrabServerType from "@/platforms/hetzner/utils/grab-server-type";
 import isServiceLoadBalancerType from "../utils/is-service-load-balancer-type";
-import grabFirewallName from "@/utils/grab-firewall-name";
 import setupHetznerServerInitFirewalls from "./setup-hetzner-server-init-firewalls";
 import setupHetznerServerInitVolumes from "./setup-hetzner-server-init-volumes";
 
 type Params = {
-    service: TCIConfigServiceConfig;
+    service: ParsedDeploymentServiceConfig;
     serviceName: string;
     deployment: Omit<TCIConfigDeployment, "services">;
     defaultNetwork: HETZNER_NETWORK;
@@ -35,6 +33,11 @@ export default async function ({
     const SERVER_STATUS_CHECK_INTERVAL = 5000;
 
     const sshRelayServer = await grabSSHRelayServer({ deployment });
+
+    const msql_service_types: ParsedDeploymentServiceConfig["type"][] = [
+        "mariadb-galera",
+        "mysql",
+    ];
 
     if (!sshRelayServer?.ip) {
         console.error(
@@ -128,7 +131,19 @@ export default async function ({
                             await Hetzner.servers.delete({
                                 server_id: existingServer.id,
                             });
+
                             global.UPDATE_LOAD_BALANCERS = true;
+
+                            global.ACTIVE_SERVICE_INFO[
+                                deployment.deployment_name
+                            ] = {
+                                ...global.ACTIVE_SERVICE_INFO[
+                                    deployment.deployment_name
+                                ],
+                                [service.service_name]: {
+                                    service_deleted: true,
+                                },
+                            };
                         }
 
                         const newServer = await Hetzner.servers.create({
@@ -195,12 +210,14 @@ export default async function ({
                                     private_ip: privateIP,
                                     public_ip: publicIP,
                                 });
-                                return;
+                                break;
                             } else {
                                 retries++;
                                 await Bun.sleep(SERVER_STATUS_CHECK_INTERVAL);
                             }
                         }
+
+                        resolve(true);
                     })();
                 }).catch((error) => {
                     console.error(`Instance ERROR => ${error.message}`);

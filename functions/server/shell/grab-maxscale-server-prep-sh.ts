@@ -3,6 +3,7 @@ import bunGrabPrivateIPsBulkScripts from "@/utils/bun-scripts/bun-grab-private-i
 import grabPrivateIPsBulkScripts from "@/utils/ssh/shell-scripts/grab-private-ips-bulk-scripts";
 import grabMaxScaleConfig from "./grab-maxscale-config";
 import { turboCiDepsCmds } from "../install-turboci-dependencies";
+import grabBashrcSetupSh from "../grab-bashrc-setup-sh";
 
 type Params = {
     private_server_ips: string[];
@@ -38,7 +39,9 @@ export default async function grabMaxScaleServerPrepSH({
     // finalCmd += `\n`;
     // finalCmd += `rm -rf /etc/apt/sources.list.d/*\n`;
     // finalCmd += `rm -rf /var/lib/apt/lists/*\n`;
-    finalCmd += `\n`;
+    // finalCmd += `\n`;
+
+    finalCmd += `${grabBashrcSetupSh()}\n`;
 
     const maxscaleCnf = await grabMaxScaleConfig({
         maxscale_service,
@@ -52,7 +55,7 @@ export default async function grabMaxScaleServerPrepSH({
     }
 
     if (!skip_init) {
-        finalCmd += `cat /root/.hushlogin || touch /root/.hushlogin\n`;
+        finalCmd += `touch /root/.hushlogin\n`;
         finalCmd += `apt update -qq\n`;
 
         finalCmd += `command -v maxscale >/dev/null 2>&1 || (\n`;
@@ -66,6 +69,11 @@ export default async function grabMaxScaleServerPrepSH({
 
     finalCmd += `systemctl enable maxscale\n`;
     finalCmd += `systemctl restart maxscale 2>/dev/null || systemctl start maxscale\n`;
+
+    finalCmd += `cat > /root/.bash_history << 'BASHHISTORYEOF'\n`;
+    finalCmd += `maxctrl list servers\n`;
+    finalCmd += `BASHHISTORYEOF\n`;
+    finalCmd += `\n`;
 
     return bun
         ? bunGrabPrivateIPsBulkScripts({

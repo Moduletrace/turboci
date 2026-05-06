@@ -15,12 +15,12 @@ async function run(host: string) {
         attempt += 1;
         if (attempt > MAX_ATTEMPTS) {
             console.log(
-                `Error: ${host} not ready after ${MAX_ATTEMPTS} attempts. Exiting.`
+                `Error: ${host} not ready after ${MAX_ATTEMPTS} attempts. Exiting.`,
             );
             process.exit(1);
         }
         console.log(
-            `Waiting for ${host} to be ready... (attempt ${attempt}/${MAX_ATTEMPTS})`
+            `Waiting for ${host} to be ready... (attempt ${attempt}/${MAX_ATTEMPTS})`,
         );
         await Bun.sleep(TIMEOUT);
     }
@@ -30,7 +30,7 @@ async function run(host: string) {
     execCmd += `cat /root/.bashrc | grep "ll='ls -laF'" || printf "
 alias ll='ls -laF'
 " >> /root/.bashrc
-cat /root/.hushlogin || touch /root/.hushlogin
+touch /root/.hushlogin
 apt update
 command -v nginx >/dev/null 2>&1 || apt install -y nginx
 command -v certbot >/dev/null 2>&1 || apt install -y certbot
@@ -104,7 +104,7 @@ nginx -t || exit 1
 rm -rf /var/cache/nginx/*
 nginx -s reload
 \n`;
-    execCmd += `TURBOCIEXEC\n`;
+    execCmd += `\nTURBOCIEXEC\n`;
     try {
         execSync(execCmd);
     } catch (error) {

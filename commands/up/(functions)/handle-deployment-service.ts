@@ -69,10 +69,6 @@ export default async function handleDeploymentService({
         !isServiceLoadBalancerType({ service }) &&
         !isNextServiceLoadBalancer &&
         global.UPDATE_LOAD_BALANCERS
-        // &&
-        // !global.UPDATED_LOAD_BALANCERS[
-        //     deployment.deployment_name
-        // ]
     ) {
         const isServiceAttachedToALoadBalancer = load_balancers.find((lb) => {
             const targets =

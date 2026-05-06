@@ -4,6 +4,9 @@ import grabPrivateIPsBulkScripts from "@/utils/ssh/shell-scripts/grab-private-ip
 import grabDefaultServicePrepSH from "./grab-default-service-prep-sh";
 import grabNormalizedServers from "@/utils/grab-normalized-servers";
 import grabMariadbGaleraInitSQL from "./grab-mariadb-galera-init-sql";
+import grabDirNames from "@/utils/grab-dir-names";
+
+const { serviceBashrcDir } = grabDirNames();
 
 type Params = {
     service: ParsedDeploymentServiceConfig;
@@ -33,13 +36,18 @@ export default async function grabMariadbGaleraServerPrepSH({
     service,
     deployment,
     bun,
-}: Params): Promise<string[] | undefined> {
+}: Params) {
     const galeraConfig = service.mariadb_galera;
     const clusterName = galeraConfig?.cluster_name ?? "turboci_galera_cluster";
     const sstMethod = galeraConfig?.sst_method ?? "mariabackup";
     const port = galeraConfig?.port ?? 3306;
     const bindAddress = galeraConfig?.bind_address ?? "0.0.0.0";
     const rootPassword = galeraConfig?.root_password ?? "";
+
+    const was_this_server_deleted =
+        global.ACTIVE_SERVICE_INFO[deployment.deployment_name]?.[
+            service.service_name
+        ]?.service_deleted;
 
     const root_service_name =
         service.parent_service_name || service.service_name;
@@ -53,7 +61,6 @@ export default async function grabMariadbGaleraServerPrepSH({
     }
 
     const servers = await grabNormalizedServers({
-        provider: deployment.provider,
         service: root_service,
         target_deployment: deployment,
         grab_children: true,
@@ -85,12 +92,6 @@ export default async function grabMariadbGaleraServerPrepSH({
     let init_cmd = ``;
 
     init_cmd += `set -e\n`;
-    /**
-     * Temporary remove Hetzner Mirrors
-     */
-    // init_cmd += `\n`;
-    // init_cmd += `rm -rf /etc/apt/sources.list.d/*\n`;
-    // init_cmd += `rm -rf /var/lib/apt/lists/*\n`;
     init_cmd += `\n`;
 
     init_cmd += `${defaultPrepCmd}\n`;
@@ -106,7 +107,6 @@ export default async function grabMariadbGaleraServerPrepSH({
 
     init_cmd += `MY_IP=$(hostname -I | awk '{print $1}')\n\n`;
 
-    // --- IDEMPOTENT CONFIGURATION ---
     init_cmd += `mkdir -p /etc/mysql/conf.d\n`;
     init_cmd += `cat > /etc/mysql/conf.d/galera.cnf << 'GALERAEOF'\n`;
     init_cmd += `[mariadb]\n`;
@@ -127,7 +127,7 @@ export default async function grabMariadbGaleraServerPrepSH({
     init_cmd += `sed -i "s/__TCI_NODE_IP__/$MY_IP/" /etc/mysql/conf.d/galera.cnf\n\n`;
 
     // --- START SCRIPT ---
-    init_cmd += `cat > /usr/local/bin/tci-galera-start.sh << 'STARTEOF'\n`;
+    init_cmd += `cat > /usr/local/bin/tci-galera-setup.sh << 'SETUPEOF'\n`;
     init_cmd += `#!/bin/bash\n`;
     init_cmd += `MY_IP=$(hostname -I | awk '{print $1}')\n`;
 
@@ -135,40 +135,59 @@ export default async function grabMariadbGaleraServerPrepSH({
     init_cmd += `sed -i '/^#\\s*bind-address/!s/^bind-address/# bind-address/' /etc/mysql/mariadb.conf.d/50-server.cnf\n`;
 
     init_cmd += `if [[ "$MY_IP" == "${bootstrapNodeIP}" ]]; then\n`;
-    init_cmd += `    echo "TurboCI: Bootstrapping Galera cluster..."\n`;
-    init_cmd += `    if [ -f "/var/lib/mysql/grastate.dat" ]; then\n`;
-    init_cmd += `        sed -i 's/safe_to_bootstrap: 0/safe_to_bootstrap: 1/' "/var/lib/mysql/grastate.dat"\n`;
-    init_cmd += `    fi\n`;
+
+    if (was_this_server_deleted) {
+        init_cmd += `    echo "Rejoining primary node to cluster..."\n`;
+        init_cmd += `    systemctl restart mariadb\n`;
+    } else {
+        init_cmd += `    echo "TurboCI: Bootstrapping Galera cluster..."\n`;
+        init_cmd += `    if [ -f "/var/lib/mysql/grastate.dat" ]; then\n`;
+        init_cmd += `        sed -i 's/safe_to_bootstrap: 0/safe_to_bootstrap: 1/' "/var/lib/mysql/grastate.dat"\n`;
+        init_cmd += `    fi\n`;
+        init_cmd += `    if systemctl is-active --quiet mariadb; then\n`;
+        init_cmd += `        systemctl restart mariadb\n`;
+        init_cmd += `    else\n`;
+        init_cmd += `        galera_new_cluster || { echo "Bootstrap failed"; exit 1; }\n`;
+        init_cmd += `    fi\n`;
+        init_cmd += `    exit 0\n`;
+    }
+
+    // init_cmd += `    echo "TurboCI: Bootstrapping Galera cluster..."\n`;
+    // init_cmd += `    if [ -f "/var/lib/mysql/grastate.dat" ]; then\n`;
+    // init_cmd += `        sed -i 's/safe_to_bootstrap: 0/safe_to_bootstrap: 1/' "/var/lib/mysql/grastate.dat"\n`;
+    // init_cmd += `    fi\n`;
+    // init_cmd += `    if systemctl is-active --quiet mariadb; then\n`;
+    // init_cmd += `        systemctl restart mariadb\n`;
+    // init_cmd += `    else\n`;
+    // init_cmd += `        galera_new_cluster || { echo "Bootstrap failed"; exit 1; }\n`;
+    // init_cmd += `    fi\n`;
+    // init_cmd += `    exit 0\n`;
+
+    init_cmd += `else\n`;
+    init_cmd += `    echo "TurboCI: Joining Galera cluster..."\n`;
     init_cmd += `    if systemctl is-active --quiet mariadb; then\n`;
     init_cmd += `        systemctl restart mariadb\n`;
     init_cmd += `    else\n`;
-    init_cmd += `        galera_new_cluster || { echo "Bootstrap failed"; exit 1; }\n`;
+    init_cmd += `        systemctl start mariadb\n`;
     init_cmd += `    fi\n`;
-    init_cmd += `    exit 0\n`;
-    init_cmd += `else\n`;
-    init_cmd += `    echo "TurboCI: Bootstrapping Galera children nodes ..."\n`;
-    init_cmd += `    systemctl start mariadb\n`;
     init_cmd += `fi\n`;
+    init_cmd += `SETUPEOF\n`;
 
-    // // JOINER LOGIC
-    // finalCmd += `if systemctl is-active --quiet mariadb; then\n`;
-    // finalCmd += `    echo "TurboCI: MariaDB is already running. Skipping start."\n`;
-    // finalCmd += `    systemctl restart mariadb\n`;
-    // finalCmd += `    exit 0\n`;
-    // finalCmd += `else\n`;
-    // finalCmd += `    echo "TurboCI: Starting MariaDB to join cluster..."\n`;
-    // finalCmd += `    systemctl start mariadb\n`;
-    // finalCmd += `fi\n`;
-    init_cmd += `STARTEOF\n`;
-
-    // --- SQL INIT (Idempotent Users) ---
-    const initSqlLines: string[] = await grabMariadbGaleraInitSQL({
+    const init_sql_lines: string[] = await grabMariadbGaleraInitSQL({
         deployment,
         service,
     });
 
+    /**
+     * Write Envs
+     */
+    init_cmd += `cat > ${serviceBashrcDir}/envs.sh << 'ENVSEOF'\n`;
+    init_cmd += `export MARIADB_ROOT_PASSWORD="${rootPassword}"\n`;
+    init_cmd += `ENVSEOF\n`;
+    init_cmd += `\n`;
+
     // Write SQL and Init script
-    init_cmd += `cat > /usr/local/bin/tci-galera-init.sql << 'INITSQLEOF'\n${initSqlLines.join("\n")}\nINITSQLEOF\n\n`;
+    init_cmd += `cat > /usr/local/bin/tci-galera-init.sql << 'INITSQLEOF'\n${init_sql_lines.join("\n")}\nINITSQLEOF\n\n`;
 
     init_cmd += `cat > /usr/local/bin/tci-galera-init.sh << 'INITSHEOF'\n`;
     init_cmd += `#!/bin/bash\n`;
@@ -199,64 +218,69 @@ export default async function grabMariadbGaleraServerPrepSH({
 
     init_cmd += `MARIADBEOF\n\n`;
 
+    init_cmd += `cat > /usr/local/bin/tci-galera-start.sh << 'STARTEOF'\n`;
+    init_cmd += `#!/bin/bash\n`;
+    init_cmd += `/usr/local/bin/tci-galera-setup.sh\n`;
+
+    init_cmd += `\n`;
+    init_cmd += `# Wait for Galera to become ready\n`;
+    init_cmd += `MAX_RETRIES=30\n`;
+    init_cmd += `RETRY_COUNT=0\n`;
+    init_cmd += `while true; do\n`;
+    init_cmd += `    IS_READY=$(mariadb -u root -p'${rootPassword}' -e "show status like 'wsrep_ready'")\n`;
+    init_cmd += `    if echo "$IS_READY" | grep "ON"; then\n`;
+    init_cmd += `        echo "Galera is ready!"\n`;
+    init_cmd += `        /usr/local/bin/tci-galera-init.sh\n`;
+    init_cmd += `        break\n`;
+    init_cmd += `    fi\n`;
+    init_cmd += `\n`;
+    init_cmd += `    RETRY_COUNT=$((RETRY_COUNT + 1))\n`;
+    init_cmd += `    if [[ $RETRY_COUNT -ge $MAX_RETRIES ]]; then\n`;
+    init_cmd += `        echo "Error: Galera failed to become ready after $MAX_RETRIES attempts." >&2\n`;
+    init_cmd += `        exit 1\n`;
+    init_cmd += `    fi\n`;
+    init_cmd += `\n`;
+    init_cmd += `    echo "Waiting for Galera... (Attempt $RETRY_COUNT/$MAX_RETRIES)"\n`;
+    init_cmd += `    /usr/local/bin/tci-galera-setup.sh\n`;
+    init_cmd += `    sleep 2\n`;
+    init_cmd += `done\n`;
+    init_cmd += `STARTEOF\n`;
+    init_cmd += `\n`;
+
+    init_cmd += `cat > /root/.bash_history << 'BASHHISTORYEOF'\n`;
+    init_cmd += `systemctl status mariadb.service\n`;
+    init_cmd += `/usr/local/bin/tci-galera-setup.sh\n`;
+    init_cmd += `/usr/local/bin/tci-galera-start.sh\n`;
+    init_cmd += `mariadb -u root -p"\$MARIADB_ROOT_PASSWORD" -e "SHOW STATUS LIKE 'wsrep_%'"\n`;
+    init_cmd += `mariadb -u root -p"\$MARIADB_ROOT_PASSWORD"\n`;
+    init_cmd += `BASHHISTORYEOF\n`;
+
+    init_cmd += `cat > /root/.bash_history << 'BASHHISTORYEOF'\n`;
+    init_cmd += `systemctl status mariadb.service\n`;
+    init_cmd += `/usr/local/bin/tci-galera-setup.sh\n`;
+    init_cmd += `/usr/local/bin/tci-galera-start.sh\n`;
+    init_cmd += `mariadb -u root -p"\$MARIADB_ROOT_PASSWORD" -e "SHOW STATUS LIKE 'wsrep_%'"\n`;
+    init_cmd += `mariadb -u root -p"\$MARIADB_ROOT_PASSWORD"\n`;
+    init_cmd += `BASHHISTORYEOF\n`;
+    init_cmd += `\n`;
+
+    init_cmd += `chmod +x /usr/local/bin/tci-galera-setup.sh\n`;
     init_cmd += `chmod +x /usr/local/bin/tci-galera-start.sh\n`;
     init_cmd += `chmod +x /usr/local/bin/tci-galera-init.sh\n`;
 
-    init_cmd += `if [[ "$MY_IP" != "${bootstrapNodeIP}" ]]; then\n`;
-    init_cmd += `    systemctl stop mariadb || echo "Mariadb stopped already"\n`;
-    init_cmd += `fi\n`;
-
-    let start_cmd = ``;
-
-    start_cmd += `/usr/local/bin/tci-galera-start.sh\n`;
-
-    start_cmd += `\n# Wait for Galera to become ready\n`;
-    start_cmd += `MAX_RETRIES=30\n`;
-    start_cmd += `RETRY_COUNT=0\n`;
-    start_cmd += `while true; do\n`;
-    start_cmd += `    IS_READY=$(mariadb -N -s -e "show status like 'wsrep_ready'" | cut -f2)\n`;
-    start_cmd += `    if [[ "$IS_READY" == "ON" ]]; then\n`;
-    start_cmd += `        echo "Galera is ready!"\n`;
-    start_cmd += `        /usr/local/bin/tci-galera-init.sh\n`;
-    start_cmd += `        break\n`;
-    start_cmd += `    fi\n`;
-    start_cmd += `\n`;
-    start_cmd += `    RETRY_COUNT=$((RETRY_COUNT + 1))\n`;
-    start_cmd += `    if [[ $RETRY_COUNT -ge $MAX_RETRIES ]]; then\n`;
-    start_cmd += `        echo "Error: Galera failed to become ready after $MAX_RETRIES attempts." >&2\n`;
-    start_cmd += `        exit 1\n`;
-    start_cmd += `    fi\n`;
-    start_cmd += `\n`;
-    start_cmd += `    echo "Waiting for Galera... (Attempt $RETRY_COUNT/$MAX_RETRIES)"\n`;
-    start_cmd += `    /usr/local/bin/tci-galera-start.sh\n`;
-    start_cmd += `    sleep 2\n`;
-    start_cmd += `done\n`;
+    // init_cmd += `if [[ "$MY_IP" != "${bootstrapNodeIP}" ]]; then\n`;
+    // init_cmd += `    systemctl stop mariadb || echo "Mariadb stopped already"\n`;
+    // init_cmd += `fi\n`;
 
     const full_init_cmd = bun
         ? bunGrabPrivateIPsBulkScripts({
               private_server_ips,
               script: init_cmd,
-              parrallel: true,
-              async: true,
           })
         : grabPrivateIPsBulkScripts({
               private_server_ips,
               script: init_cmd,
-              parrallel: true,
-              async: true,
           });
 
-    const full_start_cmd = bun
-        ? bunGrabPrivateIPsBulkScripts({
-              private_server_ips,
-              script: start_cmd,
-              parrallel: true,
-          })
-        : grabPrivateIPsBulkScripts({
-              private_server_ips,
-              script: start_cmd,
-              parrallel: true,
-          });
-
-    return [full_init_cmd, full_start_cmd];
+    return full_init_cmd;
 }

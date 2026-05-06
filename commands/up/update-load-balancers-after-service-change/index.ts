@@ -49,7 +49,6 @@ export default async function ({
         if (!loadBalancerServices?.[0]) continue;
 
         const servers = await grabNormalizedServers({
-            provider: deployment.provider,
             service: load_balancer,
             target_deployment: deployment,
             grab_children: true,

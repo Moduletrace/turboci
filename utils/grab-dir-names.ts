@@ -6,7 +6,7 @@ type Params = {
     name?: string;
 };
 
-export default function grabDirNames(params?: Params) {
+export default function grabDirNames() {
     let passedTurboCIDir = process.env.TURBOCI_DIR;
 
     if (passedTurboCIDir && !existsSync(passedTurboCIDir)) {
@@ -39,6 +39,7 @@ export default function grabDirNames(params?: Params) {
     const relayDeploymentIDFile = path.join(relayTurboCIDir, "deployment_id");
     const relayConfigDir = path.join(relayTurboCIDir, ".config");
     const relayAdminDir = path.join(relayTurboCIDir, ".admin");
+    const relayBackupsDir = path.join(relayTurboCIDir, ".backup");
     const relayConfigJSON = path.join(relayConfigDir, "turboci.json");
     const relayServerSSHDir = path.join(relayTurboCIDir, ".ssh");
     const relayServerBunScriptsDir = path.join(relayTurboCIDir, ".bun");
@@ -55,8 +56,8 @@ export default function grabDirNames(params?: Params) {
         AppNames["TurboCISSHKeyName"],
     );
 
-    const relayServerRsyncDir = "/root/.turboci/.rsync";
-    const relayShDir = "/root/.turboci/.sh";
+    const relayServerRsyncDir = path.join(relayTurboCIDir, ".rsync");
+    const relayShDir = path.join(relayTurboCIDir, ".sh");
     const relayShExecFile = path.join(relayShDir, "relay.sh");
 
     const relayNGINXConfigFile = `/etc/nginx/nginx.conf`;
@@ -68,6 +69,9 @@ export default function grabDirNames(params?: Params) {
 
     const localRelayShExecFile = path.join(turbociDir, "relay.sh");
 
+    const serviceBashrcDir = `/root/.bashrc.d`;
+    const mariaDBserviceBackupDir = `/var/backups/mariadb`;
+
     return {
         rootDir,
         turbociDir,
@@ -78,16 +82,17 @@ export default function grabDirNames(params?: Params) {
         sshPublicKeyFile,
         sshPrivateKeyFile,
         activeConfigYAML,
+        tmpDir,
+        localRelayShExecFile,
+
         relayServerSSHDir,
         relayServerSshPublicKeyFile,
         relayServerSshPrivateKeyFile,
         relayServerRsyncDir,
-        tmpDir,
         relayServerBunScriptsDir,
         relayServerBunScriptFile,
         relayShDir,
         relayShExecFile,
-        localRelayShExecFile,
         relayConfigDir,
         relayConfigJSON,
         relayDeploymentIDFile,
@@ -95,5 +100,9 @@ export default function grabDirNames(params?: Params) {
         relayNGINXConfigDir,
         relayNGINXDefaultServerConfigFile,
         relayAdminDir,
+        relayBackupsDir,
+
+        serviceBashrcDir,
+        mariaDBserviceBackupDir,
     };
 }

@@ -1,3 +1,4 @@
+import AppData from "@/data/app-data";
 import type { DefaultDeploymentParams, ServiceScriptObject } from "@/types";
 import { AppNames } from "@/utils/app-names";
 import bunGrabPrivateIPsBulkScripts from "@/utils/bun-scripts/bun-grab-private-ips-bulk-scripts";
@@ -161,7 +162,6 @@ export default async function ({
         typeof service.instances == "number" ? service.instances : 1;
 
     const servers = await grabNormalizedServers({
-        provider: deployment.provider,
         service,
         target_deployment: deployment,
     });
@@ -211,6 +211,9 @@ export default async function ({
         exit_on_error: true,
         log_error: true,
         bun: true,
+        options: {
+            timeout: AppData["DefaultInitTimeoutMilliseconds"],
+        },
     });
 
     if (!run || run.match(new RegExp(`${AppNames["HealthcheckErrorMsg"]}`))) {
@@ -224,5 +227,3 @@ export default async function ({
 
     return true;
 }
-
-// INSERT INTO mysql_users (username, password, default_hostgroup) VALUES ('archben', 'tobybenoti', 20);

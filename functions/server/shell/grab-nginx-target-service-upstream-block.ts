@@ -31,7 +31,6 @@ export default async function grabNginxTargetServiceUpstreamBlock({
     }
 
     const service_servers = await grabNormalizedServers({
-        provider: target_deployment.provider,
         service: target_service_full_object,
         target_deployment,
         grab_children: true,

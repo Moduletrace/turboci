@@ -1,6 +1,7 @@
 import type { Ora } from "ora";
 import get from "./functions/get";
 import type {
+    ActiveServiceInfo,
     PackageJson,
     SSHRelayServerReturn,
     TCIConfigService,
@@ -29,8 +30,10 @@ declare global {
     var UPDATED_LOAD_BALANCERS: { [k: string]: boolean };
     var CURRENT_DEPLOYMENT_INDEX: number;
     var CURRENT_SERVICE_INDEX: number;
+    var ACTIVE_SERVICE_INFO: Record<string, Record<string, ActiveServiceInfo>>;
 }
 
+global.ACTIVE_SERVICE_INFO = {};
 global.RELAY_SERVERS = {};
 global.ORA_SPINNER = ora();
 global.ORA_SPINNER.clear();

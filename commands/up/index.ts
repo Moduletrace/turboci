@@ -126,6 +126,27 @@ export default function () {
                         service_index: s,
                         services,
                     });
+
+                    /**
+                     * Run again if `global.RERUN_SERVICE` is
+                     * set
+                     */
+                    if (global.RERUN_SERVICE) {
+                        await handleDeploymentService({
+                            deployment: final_deployment,
+                            deployment_index: i,
+                            deployments_and_services_to_update,
+                            load_balancers,
+                            options,
+                            service,
+                            service_index: s,
+                            services,
+                        });
+                    }
+
+                    delete global.ACTIVE_SERVICE_INFO[
+                        final_deployment.deployment_name
+                    ]?.[service.service_name];
                 }
             }
 

@@ -45,7 +45,6 @@ export default async function grabProxySQLConfig({
         if (!targetSvc) continue;
 
         const servers = await grabNormalizedServers({
-            provider: deployment.provider,
             service: targetSvc,
             target_deployment: deployment,
             grab_children: true,

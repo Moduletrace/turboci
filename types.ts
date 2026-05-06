@@ -1271,3 +1271,19 @@ export type MaxscaleServerEntry = {
     ip: string;
     port: number;
 };
+
+export type BackupRestoreParams = {
+    service: ParsedDeploymentServiceConfig;
+    deployment: Omit<TCIConfigDeployment, "services">;
+    /**
+     * Directories on the service to backup or restore
+     */
+    dirs?: BackupRestoreDirs[];
+    action: "backup" | "restore";
+};
+
+export type BackupRestoreDirs = { src: string };
+
+export type ActiveServiceInfo = {
+    service_deleted?: boolean;
+};

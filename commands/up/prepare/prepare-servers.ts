@@ -18,7 +18,6 @@ export default async function ({
     const provider = deployment.provider;
 
     const servers = await grabNormalizedServers({
-        provider,
         service,
         target_deployment: deployment,
     });

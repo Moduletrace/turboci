@@ -47,7 +47,7 @@ export default async function grabMaxScaleServerDockerPrepSH({
     }
 
     if (!skip_init) {
-        finalCmd += `cat /root/.hushlogin || touch /root/.hushlogin\n`;
+        finalCmd += `touch /root/.hushlogin\n`;
         finalCmd += `apt update -qq\n`;
 
         // finalCmd += `command -v maxscale >/dev/null 2>&1 || (\n`;

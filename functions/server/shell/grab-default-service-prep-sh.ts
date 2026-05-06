@@ -2,6 +2,7 @@ import { turboCiDepsCmds } from "@/functions/server/install-turboci-dependencies
 import type { ParsedDeploymentServiceConfig, TCIGlobalConfig } from "@/types";
 import grabPreferedOSType from "@/utils/grab-os-type";
 import _ from "lodash";
+import grabBashrcSetupSh from "../grab-bashrc-setup-sh";
 
 type Params = {
     service: ParsedDeploymentServiceConfig;
@@ -49,6 +50,8 @@ export default async function grabDefaultServicePrepSH({
         finalCmd += `echo "Installing TurboCI dependencies ..."\n`;
         finalCmd += `${turboCIDepsCmds.join("\n")}\n`;
     }
+
+    finalCmd += `${grabBashrcSetupSh()}\n`;
 
     return finalCmd;
 }
