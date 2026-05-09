@@ -7,6 +7,7 @@ import type {
 import { AppNames } from "../../../../utils/app-names";
 import grabAppNames from "../../../../utils/grab-app-names";
 import _ from "lodash";
+import setupHetznerServerInitVolumes from "@/commands/up/setup/functions/setup-hetzner-server-init-volumes";
 
 type Params = {
     service: ParsedDeploymentServiceConfig;
@@ -57,6 +58,7 @@ export default async function ({ service, deployment }: Params) {
                         });
 
                         const server = serverRes.servers?.[0];
+
                         if (!server?.id) {
                             resolve(false);
                             return;
@@ -68,6 +70,18 @@ export default async function ({ service, deployment }: Params) {
 
                         if (!deleteServer) {
                             resolve(false);
+                        }
+
+                        const volumes = await setupHetznerServerInitVolumes({
+                            deployment,
+                            service,
+                            server_index: instanceIndex,
+                        });
+
+                        for (let vol = 0; vol < volumes.length; vol++) {
+                            const volume_id = volumes[vol];
+                            if (!volume_id) continue;
+                            await Hetzner.volumes.delete({ volume_id });
                         }
 
                         resolve(true);

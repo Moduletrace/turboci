@@ -2,14 +2,14 @@ import hetznerQuery from "../../query";
 import type { HETZNER_VOLUME } from "../../types";
 
 type Params = {
-    server_id: string | number;
+    volume_id: string | number;
 };
 
 export default async function (params: Params) {
     const res = await hetznerQuery<HETZNER_VOLUME>({
         path: "volumes",
-        id: params.server_id,
+        id: params.volume_id,
     });
 
-    return { server: res?.server };
+    return { volume: res?.volume };
 }

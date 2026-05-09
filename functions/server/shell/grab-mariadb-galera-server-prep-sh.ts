@@ -44,6 +44,10 @@ export default async function grabMariadbGaleraServerPrepSH({
     const bindAddress = galeraConfig?.bind_address ?? "0.0.0.0";
     const rootPassword = galeraConfig?.root_password ?? "";
 
+    const default_data_dir = "/var/lib/mysql";
+
+    const data_dir = galeraConfig?.data_dir ?? default_data_dir;
+
     const was_this_server_deleted =
         global.ACTIVE_SERVICE_INFO[deployment.deployment_name]?.[
             service.service_name
@@ -131,8 +135,18 @@ export default async function grabMariadbGaleraServerPrepSH({
     init_cmd += `#!/bin/bash\n`;
     init_cmd += `MY_IP=$(hostname -I | awk '{print $1}')\n`;
 
-    // Ensure bind-address is commented out before starting
-    init_cmd += `sed -i '/^#\\s*bind-address/!s/^bind-address/# bind-address/' /etc/mysql/mariadb.conf.d/50-server.cnf\n`;
+    if (data_dir !== default_data_dir) {
+        init_cmd += `mkdir -p ${data_dir}\n`;
+        init_cmd += `if [ -z "$(ls -A ${data_dir} 2>/dev/null)" ]; then\n`;
+        init_cmd += `    cp -a ${default_data_dir}/. ${data_dir}/\n`;
+        init_cmd += `    chown -R mysql:mysql ${data_dir}\n`;
+        init_cmd += `fi\n`;
+    }
+
+    init_cmd += `echo "${data_dir}/** rwk," >> /etc/apparmor.d/local/usr.sbin.mysqld\n`;
+    init_cmd += `apparmor_parser -r /etc/apparmor.d/usr.sbin.mysqld\n`;
+    init_cmd += `sed -i -e '/^#\\s*bind-address/!s/^bind-address/# bind-address/' -e 's|^datadir\\s*=.*|datadir = ${data_dir}|' /etc/mysql/mariadb.conf.d/50-server.cnf\n`;
+    init_cmd += `chown -R mysql:mysql ${data_dir}\n`;
 
     init_cmd += `if [[ "$MY_IP" == "${bootstrapNodeIP}" ]]; then\n`;
 
@@ -141,27 +155,17 @@ export default async function grabMariadbGaleraServerPrepSH({
         init_cmd += `    systemctl restart mariadb\n`;
     } else {
         init_cmd += `    echo "TurboCI: Bootstrapping Galera cluster..."\n`;
-        init_cmd += `    if [ -f "/var/lib/mysql/grastate.dat" ]; then\n`;
-        init_cmd += `        sed -i 's/safe_to_bootstrap: 0/safe_to_bootstrap: 1/' "/var/lib/mysql/grastate.dat"\n`;
+        init_cmd += `    if [ -f "${data_dir}/grastate.dat" ]; then\n`;
+        init_cmd += `        sed -i 's/safe_to_bootstrap: 0/safe_to_bootstrap: 1/' "${data_dir}/grastate.dat"\n`;
         init_cmd += `    fi\n`;
         init_cmd += `    if systemctl is-active --quiet mariadb; then\n`;
+
         init_cmd += `        systemctl restart mariadb\n`;
         init_cmd += `    else\n`;
         init_cmd += `        galera_new_cluster || { echo "Bootstrap failed"; exit 1; }\n`;
         init_cmd += `    fi\n`;
         init_cmd += `    exit 0\n`;
     }
-
-    // init_cmd += `    echo "TurboCI: Bootstrapping Galera cluster..."\n`;
-    // init_cmd += `    if [ -f "/var/lib/mysql/grastate.dat" ]; then\n`;
-    // init_cmd += `        sed -i 's/safe_to_bootstrap: 0/safe_to_bootstrap: 1/' "/var/lib/mysql/grastate.dat"\n`;
-    // init_cmd += `    fi\n`;
-    // init_cmd += `    if systemctl is-active --quiet mariadb; then\n`;
-    // init_cmd += `        systemctl restart mariadb\n`;
-    // init_cmd += `    else\n`;
-    // init_cmd += `        galera_new_cluster || { echo "Bootstrap failed"; exit 1; }\n`;
-    // init_cmd += `    fi\n`;
-    // init_cmd += `    exit 0\n`;
 
     init_cmd += `else\n`;
     init_cmd += `    echo "TurboCI: Joining Galera cluster..."\n`;
@@ -215,7 +219,7 @@ export default async function grabMariadbGaleraServerPrepSH({
     init_cmd += `skip-networking=0\n`;
     init_cmd += `bind-address = 0.0.0.0\n`;
     init_cmd += `proxy_protocol_networks=${network_cidr}\n`;
-
+    init_cmd += `datadir=${data_dir}\n`;
     init_cmd += `MARIADBEOF\n\n`;
 
     init_cmd += `cat > /usr/local/bin/tci-galera-start.sh << 'STARTEOF'\n`;
@@ -267,10 +271,6 @@ export default async function grabMariadbGaleraServerPrepSH({
     init_cmd += `chmod +x /usr/local/bin/tci-galera-setup.sh\n`;
     init_cmd += `chmod +x /usr/local/bin/tci-galera-start.sh\n`;
     init_cmd += `chmod +x /usr/local/bin/tci-galera-init.sh\n`;
-
-    // init_cmd += `if [[ "$MY_IP" != "${bootstrapNodeIP}" ]]; then\n`;
-    // init_cmd += `    systemctl stop mariadb || echo "Mariadb stopped already"\n`;
-    // init_cmd += `fi\n`;
 
     const full_init_cmd = bun
         ? bunGrabPrivateIPsBulkScripts({

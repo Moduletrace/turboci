@@ -1,7 +1,6 @@
 import setupFirewalls from "./setup-firewalls";
 import setupNetwork from "./setup-network";
 import setupSshKey from "./setup-ssh-key";
-import setupVolumes from "./setup-volumes";
 
 export default async function () {
     /**
@@ -31,21 +30,6 @@ export default async function () {
         global.ORA_SPINNER.succeed(`Firewalls Setup Successful!`);
     } else {
         global.ORA_SPINNER.fail(`Firewalls Setup Failed!`);
-        process.exit(1);
-    }
-
-    /**
-     * # Set up Volumes
-     */
-    global.ORA_SPINNER.text = `Setting up Volumes ...`;
-    global.ORA_SPINNER.start();
-
-    const volumesSetup = await setupVolumes();
-
-    if (volumesSetup) {
-        global.ORA_SPINNER.succeed(`Volumes Setup Successful!`);
-    } else {
-        global.ORA_SPINNER.fail(`Volumes Setup Failed!`);
         process.exit(1);
     }
 

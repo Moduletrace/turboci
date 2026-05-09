@@ -4,6 +4,8 @@ import type { HETZNER_VOLUME } from "../../types";
 
 type Params = {
     name: string;
+    location: string;
+    server_id?: string | number;
     size: number;
     labels?: { [k: string]: any };
 };
@@ -11,7 +13,11 @@ type Params = {
 export default async function (params: Params) {
     const res = await hetznerQuery<HETZNER_VOLUME>({
         path: "volumes",
-        body: { ...params, name: slugify(params.name, "-") },
+        body: {
+            ...params,
+            name: slugify(params.name, "-"),
+            automount: false,
+        },
         options: { method: "POST" },
     });
 

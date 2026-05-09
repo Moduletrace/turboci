@@ -94,25 +94,6 @@ export type TCIConfigDeployment = {
      * Additional Firewalls to setup
      */
     firewalls?: { [k: string]: TCIConfigFirewall };
-    /**
-     * Volumes to setup
-     */
-    volumes?: { [k: string]: TCIConfigVolume };
-};
-
-export type TCIConfigVolume = {
-    /**
-     * Size of the volume in gigabytes.
-     */
-    size: number;
-    /**
-     * Directory to mount the volume on the attached server.
-     */
-    mount_dir: string;
-    /**
-     * Volume Format. Defaults to `ext4`
-     */
-    format?: "xfs" | "ext4";
 };
 
 export type TCIConfigFirewall = {
@@ -387,10 +368,32 @@ export type TCIConfigServiceConfig = {
      */
     firewalls?: string[];
     /**
-     * Volumes to attach to this service. Must be defined in the top
-     * level deployment config first.
+     * Volumes to setup per instance
      */
-    volumes?: string[];
+    volumes?: TCIConfigVolume[];
+};
+
+export type TCIConfigVolume = {
+    /**
+     * Size of the volume in gigabytes.
+     */
+    size: number;
+    /**
+     * Directory to mount the volume on the attached server.
+     */
+    mount_dir: string;
+    /**
+     * Volume Format. Defaults to `ext4`
+     */
+    format?: "xfs" | "ext4";
+    /**
+     * Volume Name
+     */
+    name?: string;
+    /**
+     * Volume Description
+     */
+    description?: string;
 };
 
 export type TCIConfigSpec = {
@@ -728,6 +731,10 @@ export type TCIConfigMariadbGaleraConfig = {
      * MaxScale or HAProxy to reach private cluster IPs). Defaults to `"0.0.0.0"`.
      */
     bind_address?: string;
+    /**
+     * Directory to mount all mariadb data. Default is `/var/lib/mysql`
+     */
+    data_dir?: string;
 };
 
 /**

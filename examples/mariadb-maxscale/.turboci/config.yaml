@@ -35,6 +35,10 @@ deployments:
                             - "${DEV_MACHINE_IP}"
                         databases:
                             - db_name: myapp
+                  data_dir: /mnt/data/mariadb
+              volumes:
+                  - mount_dir: /mnt/data
+                    size: 10
               run:
                   start:
                       cmds:
@@ -48,8 +52,6 @@ deployments:
 
           maxscale:
               type: maxscale
-              instances: 1
-              clusters: 1
               maxscale:
                   target_services:
                       - service_name: db

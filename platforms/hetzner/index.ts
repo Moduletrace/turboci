@@ -42,6 +42,8 @@ import volumesGet from "./actions/volumes/get";
 import volumesCreate from "./actions/volumes/create";
 import volumesDelete from "./actions/volumes/delete";
 import volumesUpdate from "./actions/volumes/update";
+import volumesResize from "./actions/volumes/resize";
+import volumeDetach from "./actions/volumes/detach";
 
 const Hetzner = {
     locations: {
@@ -98,6 +100,8 @@ const Hetzner = {
         create: volumesCreate,
         update: volumesUpdate,
         delete: volumesDelete,
+        resize: volumesResize,
+        detach: volumeDetach,
     },
 };
 

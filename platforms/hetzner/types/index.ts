@@ -15,7 +15,7 @@ export const HETZNER_API_PATHS = [
     "volumes",
 ] as const;
 
-export const HETZNER_API_ACTIONS = ["add_route"] as const;
+export const HETZNER_API_ACTIONS = ["add_route", "resize", "detach"] as const;
 
 export type HETZNER_API_RESPONSE_DATA<
     T extends { [key: string]: any } = { [key: string]: any },
@@ -453,7 +453,7 @@ export type HETZNER_EXISTING_SERVER = {
     included_traffic: number;
     protection: HETZNER_NEW_SERVER_PROTECTION;
     labels: HETZNER_API_ADD_SERVER_BODY_LABELS;
-    volumes: any[];
+    volumes: number[];
     load_balancers: any[];
     primary_disk_size: number;
     placement_group: any;

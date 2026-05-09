@@ -8,13 +8,18 @@ import grabAppNames from "../../../../utils/grab-app-names";
 import grabServerInstanceName from "../../../../utils/grab-server-instance-name";
 import grabSSHRelayServer from "@/functions/server/ssh_relay/grab-ssh-relay-server";
 import _ from "lodash";
-import type { HETZNER_NETWORK } from "@/platforms/hetzner/types";
+import type {
+    HETZNER_EXISTING_SERVER,
+    HETZNER_NETWORK,
+} from "@/platforms/hetzner/types";
 import AppData from "@/data/app-data";
 import type { HetznerImages } from "@/platforms/hetzner/types/images";
 import hetznerGrabServerType from "@/platforms/hetzner/utils/grab-server-type";
 import isServiceLoadBalancerType from "../utils/is-service-load-balancer-type";
 import setupHetznerServerInitFirewalls from "./setup-hetzner-server-init-firewalls";
 import setupHetznerServerInitVolumes from "./setup-hetzner-server-init-volumes";
+import setupHetznerServerInitHandleVolumes from "./setup-hetzner-server-init-handle-volumes";
+import setupHetznerServerInitDetachServerVolumes from "./setup-hetzner-server-init-detach-server-volumes";
 
 type Params = {
     service: ParsedDeploymentServiceConfig;
@@ -60,15 +65,11 @@ export default async function ({
         serviceName,
     });
 
-    const volumes = await setupHetznerServerInitVolumes({
-        deployment,
-        service,
-    });
-
     const finalServerType = await hetznerGrabServerType({
         server_type: service.server_type,
     });
 
+    const all_servers: HETZNER_EXISTING_SERVER[] = [];
     const new_private_server_ips: string[] = [];
 
     const finalInstances =
@@ -115,6 +116,12 @@ export default async function ({
                                 "DefaultHetznerOS"
                             ]) as (typeof HetznerImages)[number]["name"];
 
+                        const volumes = await setupHetznerServerInitVolumes({
+                            deployment,
+                            service,
+                            server_index: instanceIndex,
+                        });
+
                         if (
                             existingServer?.id &&
                             existingServer.image.name == finalOS &&
@@ -123,11 +130,18 @@ export default async function ({
                             existingServer.datacenter.location.name ==
                                 deployment.location
                         ) {
+                            all_servers.push(existingServer);
                             resolve(true);
                             return;
                         }
 
                         if (existingServer?.id) {
+                            await setupHetznerServerInitDetachServerVolumes({
+                                deployment,
+                                server: existingServer,
+                                service,
+                            });
+
                             await Hetzner.servers.delete({
                                 server_id: existingServer.id,
                             });
@@ -184,6 +198,8 @@ export default async function ({
                             process.exit(1);
                         }
 
+                        all_servers.push(newServer.server);
+
                         const privateIP = newServer.server.private_net?.[0]?.ip;
                         const publicIP = newServer.server.public_net?.ipv4?.ip;
 
@@ -231,5 +247,14 @@ export default async function ({
         }
     }
 
-    return { new_private_server_ips };
+    await setupHetznerServerInitHandleVolumes({
+        all_servers,
+        deployment,
+        service,
+    });
+
+    return {
+        new_private_server_ips,
+        all_servers,
+    };
 }

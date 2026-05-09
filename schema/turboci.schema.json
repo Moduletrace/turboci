@@ -658,6 +658,11 @@
                                             "title": "cluster_name",
                                             "type": "string"
                                         },
+                                        "data_dir": {
+                                            "description": "Directory to mount all mariadb data. Default is `/var/lib/mysql`",
+                                            "title": "data_dir",
+                                            "type": "string"
+                                        },
                                         "databases": {
                                             "description": "Databases and users to create after cluster bootstrap.",
                                             "items": {
@@ -1519,9 +1524,44 @@
                                     "type": "string"
                                 },
                                 "volumes": {
-                                    "description": "Volumes to attach to this service. Must be defined in the top\nlevel deployment config first.",
+                                    "description": "Volumes to setup per instance",
                                     "items": {
-                                        "type": "string"
+                                        "properties": {
+                                            "description": {
+                                                "description": "Volume Description",
+                                                "title": "description",
+                                                "type": "string"
+                                            },
+                                            "format": {
+                                                "description": "Volume Format. Defaults to `ext4`",
+                                                "enum": [
+                                                    "ext4",
+                                                    "xfs"
+                                                ],
+                                                "title": "format",
+                                                "type": "string"
+                                            },
+                                            "mount_dir": {
+                                                "description": "Directory to mount the volume on the attached server.",
+                                                "title": "mount_dir",
+                                                "type": "string"
+                                            },
+                                            "name": {
+                                                "description": "Volume Name",
+                                                "title": "name",
+                                                "type": "string"
+                                            },
+                                            "size": {
+                                                "description": "Size of the volume in gigabytes.",
+                                                "title": "size",
+                                                "type": "number"
+                                            }
+                                        },
+                                        "required": [
+                                            "mount_dir",
+                                            "size"
+                                        ],
+                                        "type": "object"
                                     },
                                     "title": "volumes",
                                     "type": "array"
@@ -1531,39 +1571,6 @@
                         },
                         "description": "Map of service name → service config. Key becomes the service identifier.",
                         "title": "services",
-                        "type": "object"
-                    },
-                    "volumes": {
-                        "additionalProperties": {
-                            "properties": {
-                                "format": {
-                                    "description": "Volume Format. Defaults to `ext4`",
-                                    "enum": [
-                                        "ext4",
-                                        "xfs"
-                                    ],
-                                    "title": "format",
-                                    "type": "string"
-                                },
-                                "mount_dir": {
-                                    "description": "Directory to mount the volume on the attached server.",
-                                    "title": "mount_dir",
-                                    "type": "string"
-                                },
-                                "size": {
-                                    "description": "Size of the volume in gigabytes.",
-                                    "title": "size",
-                                    "type": "number"
-                                }
-                            },
-                            "required": [
-                                "mount_dir",
-                                "size"
-                            ],
-                            "type": "object"
-                        },
-                        "description": "Volumes to setup",
-                        "title": "volumes",
                         "type": "object"
                     }
                 },
@@ -2233,6 +2240,11 @@
                                                 "cluster_name": {
                                                     "description": "`wsrep_cluster_name` — shared identifier all Galera nodes must agree on.\nDefaults to `\"turboci_galera_cluster\"`.",
                                                     "title": "cluster_name",
+                                                    "type": "string"
+                                                },
+                                                "data_dir": {
+                                                    "description": "Directory to mount all mariadb data. Default is `/var/lib/mysql`",
+                                                    "title": "data_dir",
                                                     "type": "string"
                                                 },
                                                 "databases": {
@@ -3096,9 +3108,44 @@
                                             "type": "string"
                                         },
                                         "volumes": {
-                                            "description": "Volumes to attach to this service. Must be defined in the top\nlevel deployment config first.",
+                                            "description": "Volumes to setup per instance",
                                             "items": {
-                                                "type": "string"
+                                                "properties": {
+                                                    "description": {
+                                                        "description": "Volume Description",
+                                                        "title": "description",
+                                                        "type": "string"
+                                                    },
+                                                    "format": {
+                                                        "description": "Volume Format. Defaults to `ext4`",
+                                                        "enum": [
+                                                            "ext4",
+                                                            "xfs"
+                                                        ],
+                                                        "title": "format",
+                                                        "type": "string"
+                                                    },
+                                                    "mount_dir": {
+                                                        "description": "Directory to mount the volume on the attached server.",
+                                                        "title": "mount_dir",
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "description": "Volume Name",
+                                                        "title": "name",
+                                                        "type": "string"
+                                                    },
+                                                    "size": {
+                                                        "description": "Size of the volume in gigabytes.",
+                                                        "title": "size",
+                                                        "type": "number"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "mount_dir",
+                                                    "size"
+                                                ],
+                                                "type": "object"
                                             },
                                             "title": "volumes",
                                             "type": "array"
@@ -3108,39 +3155,6 @@
                                 },
                                 "description": "Map of service name → service config. Key becomes the service identifier.",
                                 "title": "services",
-                                "type": "object"
-                            },
-                            "volumes": {
-                                "additionalProperties": {
-                                    "properties": {
-                                        "format": {
-                                            "description": "Volume Format. Defaults to `ext4`",
-                                            "enum": [
-                                                "ext4",
-                                                "xfs"
-                                            ],
-                                            "title": "format",
-                                            "type": "string"
-                                        },
-                                        "mount_dir": {
-                                            "description": "Directory to mount the volume on the attached server.",
-                                            "title": "mount_dir",
-                                            "type": "string"
-                                        },
-                                        "size": {
-                                            "description": "Size of the volume in gigabytes.",
-                                            "title": "size",
-                                            "type": "number"
-                                        }
-                                    },
-                                    "required": [
-                                        "mount_dir",
-                                        "size"
-                                    ],
-                                    "type": "object"
-                                },
-                                "description": "Volumes to setup",
-                                "title": "volumes",
                                 "type": "object"
                             }
                         },
