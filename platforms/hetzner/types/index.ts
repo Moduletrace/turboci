@@ -273,7 +273,7 @@ export interface HETZNER_ERROR {
 export interface HETZNER_NEW_SERVER {
     backup_window: string;
     created: string;
-    datacenter: HETZNER_NEW_SERVER_DATACENTER;
+    datacenter?: HETZNER_NEW_SERVER_DATACENTER;
     id: number;
     image: HETZNER_NEW_SERVER_IMAGE;
     included_traffic: number;
@@ -297,7 +297,7 @@ export interface HETZNER_NEW_SERVER {
 export interface HETZNER_NEW_SERVER_DATACENTER {
     description: string;
     id: number;
-    location: HETZNER_LOCATION;
+    location?: HETZNER_LOCATION;
     name: string;
     server_types: HETZNER_NEW_SERVER_DATACENTER_SERVER_TYPE;
 }
@@ -442,7 +442,7 @@ export type HETZNER_EXISTING_SERVER = {
     public_net?: HETZNER_NEW_SERVER_PUBLIC_NET;
     private_net?: HETZNER_NEW_SERVER_PRIVATE_NET[];
     server_type: HETZNER_SERVER_TYPE;
-    datacenter: HETZNER_NEW_SERVER_DATACENTER;
+    location: HETZNER_LOCATION;
     image: HETZNER_OS_IMAGE;
     iso: any;
     rescue_enabled: boolean;

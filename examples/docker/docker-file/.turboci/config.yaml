@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=../../../../schema/turboci.schema.json
+
+deployments:
+    - deployment_name: dockerfile_test
+      provider: hetzner
+      location: ash
+      description: Dockerfile Test Deployment
+      services:
+          web:
+              clusters: 1

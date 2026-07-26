@@ -127,8 +127,7 @@ export default async function ({
                             existingServer.image.name == finalOS &&
                             existingServer.server_type.name ==
                                 finalServerType &&
-                            existingServer.datacenter.location.name ==
-                                deployment.location
+                            existingServer.location.name == deployment.location
                         ) {
                             all_servers.push(existingServer);
                             resolve(true);
