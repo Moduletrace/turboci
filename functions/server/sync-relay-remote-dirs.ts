@@ -140,10 +140,10 @@ export default async function syncRelayRemoteDirs({
                 log_error: true,
             });
 
-            if (!syncIPs) {
+            if (syncIPs === undefined) {
                 return {
                     success: false,
-                    msg: `No Sync IPs => ${syncIPs}`,
+                    msg: `Relay → private server sync failed`,
                 };
             }
         } else if (ip) {

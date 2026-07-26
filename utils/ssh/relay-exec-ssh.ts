@@ -111,6 +111,7 @@ export default async function relayExecSSH({
         } else {
             const str = execSync(relayCmd, {
                 stdio: ["pipe", "pipe", "pipe"],
+                maxBuffer: 64 * 1024 * 1024,
                 ...options,
                 encoding: "utf-8",
             });
@@ -130,6 +131,12 @@ export default async function relayExecSSH({
     } catch (error: any) {
         if (debug || log_error) {
             console.error(`Relay SSH Error: ${error.message}`);
+            if (error.stderr) {
+                console.error(String(error.stderr));
+            }
+            if (error.stdout) {
+                console.error(String(error.stdout));
+            }
         }
         return undefined;
     }

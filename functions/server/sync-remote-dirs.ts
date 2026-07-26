@@ -52,7 +52,7 @@ export default async function syncRemoteDirs(
     }
 
     try {
-        let cmd = `rsync -avz`;
+        let cmd = `rsync -az`;
         cmd += ` -e '${grabSSHPrefix()}'`;
 
         if (del) {

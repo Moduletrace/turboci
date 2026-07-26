@@ -43,7 +43,8 @@ export default function bunGrabBulkSyncScripts({
     bunCmd += `import { execSync } from "child_process";\n`;
     bunCmd += `\n`;
     bunCmd += `const SSH_KEY = "${relayServerSshPrivateKeyFile}";\n`;
-    bunCmd += `const SSH_OPTS = \`-i \${SSH_KEY} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -C -c aes128-ctr\`;\n`;
+    bunCmd += `const SSH_OPTS = \`-i \${SSH_KEY} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -C -c aes128-ctr\`;\n`;
+    bunCmd += `const EXEC_OPTS = { maxBuffer: 64 * 1024 * 1024, encoding: "utf-8" as const };\n`;
     bunCmd += `const REMOTE_HOSTS = [${private_server_ips
         .map((h) => `"${h.replace(/\"/g, "")}"`)
         .join(", ")}];\n`;
@@ -52,8 +53,8 @@ export default function bunGrabBulkSyncScripts({
     bunCmd += `\n`;
 
     bunCmd += `async function run(host: string) {\n`;
-    bunCmd += `    let execCmd = \`ssh \${SSH_OPTS} \${DEFAULT_SSH_USER}@\${host} mkdir -p ${dst_dir}\`;\n`;
-    bunCmd += `    execCmd += \` && rsync -avz -e 'ssh \${SSH_OPTS}' --delete\`;\n`;
+    bunCmd += `    let execCmd = \`ssh -n \${SSH_OPTS} \${DEFAULT_SSH_USER}@\${host} mkdir -p ${dst_dir}\`;\n`;
+    bunCmd += `    execCmd += \` && rsync -az -e 'ssh \${SSH_OPTS}' --delete\`;\n`;
     if (relay_ignore) {
         bunCmd += relay_ignore
             .map((patt) => `    execCmd += \` --exclude='${patt}'\`;\n`)
@@ -61,9 +62,12 @@ export default function bunGrabBulkSyncScripts({
     }
     bunCmd += `    execCmd += \` ${src} \${DEFAULT_SSH_USER}@\${host}:${dst}\`;\n`;
     bunCmd += `    try {\n`;
-    bunCmd += `        execSync(execCmd);\n`;
+    bunCmd += `        execSync(execCmd, EXEC_OPTS);\n`;
     bunCmd += `        console.log("Sync Success!");\n`;
-    bunCmd += `    } catch (error) {\n`;
+    bunCmd += `    } catch (error: any) {\n`;
+    bunCmd += `        console.error(\`Sync failed for \${host}: \${error.message}\`);\n`;
+    bunCmd += `        if (error.stderr) console.error(String(error.stderr));\n`;
+    bunCmd += `        if (error.stdout) console.error(String(error.stdout));\n`;
     bunCmd += `        process.exit(1);\n`;
     bunCmd += `    }\n`;
     bunCmd += `}\n`;

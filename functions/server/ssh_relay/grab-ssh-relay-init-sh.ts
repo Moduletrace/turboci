@@ -22,7 +22,7 @@ export default function grabSSHRelayServerInitSH({ deployment }: Params) {
     initSh += `set -e\n`;
 
     initSh += `apt update -qq\n`;
-    initSh += `apt install -y curl wget zip unzip xz-utils\n`;
+    initSh += `apt install -y curl wget zip unzip xz-utils rsync\n`;
 
     const installNodeSH = turboCiDepsCmds({ os: "debian", dependency: "node" });
     const installBunSH = turboCiDepsCmds({ os: "debian", dependency: "bun" });
