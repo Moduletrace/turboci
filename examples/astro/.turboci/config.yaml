@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Moduletrace/turboci/refs/heads/main/schema/turboci.schema.json
+
+deployments:
+    - deployment_name: astro-js
+      provider: hetzner
+      location: ash
+      description: Latest setup for Astro JS deployment
+      services:
+          app:
+              instances: 1
+              clusters: 1
+              server_type: cpx11
+              dependencies:
+                  turboci:
+                      - bun
+                      - node
+              dir_mappings:
+                  - dst: /app
+                    src: ./astro-latest
+                    use_gitignore: true
+              run:
+                  preflight:
+                      wwork_dir: /app
+                      cmds:
+                          - bun install
+                          - bun run build
+                  start:
+                      work_dir: /app
+                      cmds:
+                          - bun start
+          lb:
+              type: load_balancer
+              target_services:
+                  - service_name: app
+                    port: 3000

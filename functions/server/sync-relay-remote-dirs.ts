@@ -137,6 +137,7 @@ export default async function syncRelayRemoteDirs({
                 deployment,
                 bun: true,
                 debug,
+                log_error: true,
             });
 
             if (!syncIPs) {

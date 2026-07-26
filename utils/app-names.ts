@@ -33,4 +33,6 @@ export const AppNames = {
     LoadBalancerServerName: "turboci_lb.local",
     CertbotSSLCertName: "turboci",
     HealthcheckErrorMsg: "TurboCI Healthcheck Error",
+    ProcessRunDir: "/var/lib/turboci",
+    ProcessLogDir: "/var/log/turboci",
 } as const;

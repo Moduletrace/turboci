@@ -151,10 +151,11 @@ export default function grabSSHRelayServerInitSH({ deployment }: Params) {
     initSh += `nginx -t\n`;
     initSh += `nginx -s reload\n`;
 
-    initSh += `if [ ! -d ${relayAdminDir} ]; then\n`;
+    initSh += `if [ ! -f ${relayAdminDir}/src/scripts/shell/init.sh ]; then\n`;
+    initSh += `    rm -rf ${relayAdminDir}\n`;
     initSh += `    mkdir -p ${relayAdminDir}\n`;
     initSh += `    cd ${relayAdminDir}\n`;
-    initSh += `    git clone https://git.tben.me/Moduletrace/turboci-admin.git .\n`;
+    initSh += `    git clone https://git.tben.me/Moduletrace/turboci-admin.git ${relayAdminDir}\n`;
     initSh += `    cat << 'EOF' > ${relayAdminDir}/.env\n`;
     initSh += `DSQL_ENCRYPTION_PASSWORD="${generateRandomPassword(32)}"\n`;
     initSh += `DSQL_ENCRYPTION_SALT="${generateRandomPassword(16)}"\n`;

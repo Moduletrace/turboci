@@ -79,17 +79,32 @@ export default async function grabSSHRelayServer({
 
         const { relayServerSSHDir, sshDir } = grabDirNames();
 
-        const initRelay = await relayExecSSH({
-            cmd: initSh,
-            deployment,
-            log_error: true,
-        });
+        let init_retries = 0;
+        const MAX_INIT_RETRIES = 3;
 
-        if (initRelay) {
-            global.ORA_SPINNER.succeed(`Relay Server initialization Success!`);
-        } else {
-            global.ORA_SPINNER.fail(`Relay Server initialization Failed!`);
-            process.exit(1);
+        while (true) {
+            const initRelay = await relayExecSSH({
+                cmd: initSh,
+                deployment,
+                // log_error: true,
+            });
+
+            if (initRelay) {
+                global.ORA_SPINNER.succeed(
+                    `Relay Server initialization Success!`,
+                );
+                break;
+            }
+
+            if (init_retries > MAX_INIT_RETRIES) {
+                global.ORA_SPINNER.fail(`Relay Server initialization Failed!`);
+                process.exit(1);
+            }
+
+            init_retries++;
+
+            global.ORA_SPINNER.text = `Retrying server init ${init_retries} ...`;
+            global.ORA_SPINNER.start();
         }
 
         const sync_ssh = await syncRemoteDirs({

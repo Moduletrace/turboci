@@ -1068,7 +1068,12 @@ export type TCIConfigServiceConfigLBTarget = {
 export type TCIConfigServiceConfigRun = {
     /** Commands run before the service starts (install deps, migrations, etc.). */
     preflight?: TCIRunObj;
-    /** Commands that start the service process (must be non-blocking or daemonised). */
+    /**
+     * Commands that start the service process.
+     * Every start cmd/file is detached via a portable process runner
+     * (setsid/nohup + PID file). Prior instances are stopped by name on
+     * redeploy. Logs: `/var/log/turboci/<name>.log`.
+     */
     start?: TCIRunObj;
     /** Commands run after the service starts (smoke tests, cache warm-up, etc.). */
     postflight?: TCIRunObj;
@@ -1099,7 +1104,7 @@ export type TCIConfigServiceConfigDirMApping = {
     ignore_file?: string;
     /** Explicit patterns to exclude from the sync. */
     ignore_patterns?: string[];
-    /** If `true`, applies the project's `.gitignore` as rsync exclude rules. */
+    /** If `true`, applies the target source direcroy's `.gitignore` as rsync exclude rules. */
     use_gitignore?: boolean;
     /** Patterns excluded only on the local → relay leg of the sync. */
     relay_ignore?: string[];

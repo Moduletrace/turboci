@@ -1230,7 +1230,7 @@
                                             "type": "object"
                                         },
                                         "start": {
-                                            "description": "Commands that start the service process (must be non-blocking or daemonised).",
+                                            "description": "Commands that start the service process.\nEvery start cmd/file is detached via a portable process runner\n(setsid/nohup + PID file). Prior instances are stopped by name on\nredeploy. Logs: `/var/log/turboci/<name>.log`.",
                                             "properties": {
                                                 "cmds": {
                                                     "description": "Inline shell commands executed sequentially.",
@@ -2814,7 +2814,7 @@
                                                     "type": "object"
                                                 },
                                                 "start": {
-                                                    "description": "Commands that start the service process (must be non-blocking or daemonised).",
+                                                    "description": "Commands that start the service process.\nEvery start cmd/file is detached via a portable process runner\n(setsid/nohup + PID file). Prior instances are stopped by name on\nredeploy. Logs: `/var/log/turboci/<name>.log`.",
                                                     "properties": {
                                                         "cmds": {
                                                             "description": "Inline shell commands executed sequentially.",

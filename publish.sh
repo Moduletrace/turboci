@@ -2,6 +2,12 @@
 set -euo pipefail
 
 RELEASE_FILE="new-release.yaml"
+NOTES_FILE=""
+
+cleanup() {
+    [[ -n "${NOTES_FILE}" && -f "${NOTES_FILE}" ]] && rm -f "${NOTES_FILE}"
+}
+trap cleanup EXIT
 
 # ── Colors ────────────────────────────────────────────────────────────────────
 BOLD='\033[1m'
@@ -51,7 +57,7 @@ bump_version() {
 is_semver() { [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; }
 
 # Substitute {version} and {tag} placeholders in a string.
-fill() { echo "$1" | sed "s/{version}/${NEW_VERSION}/g; s/{tag}/${TAG}/g"; }
+fill() { printf '%s\n' "$1" | sed "s/{version}/${NEW_VERSION}/g; s/{tag}/${TAG}/g"; }
 
 # Read a field from new-release.yaml via bun + js-yaml.
 # Returns empty string if the field is absent or null.
@@ -64,6 +70,16 @@ const val  = cfg['$1'];
 if (val === null || val === undefined || val === '') process.exit(0);
 process.stdout.write(String(val).trim());
 " 2>/dev/null || true
+}
+
+# True when notes are empty or only the stock template (headings / bare bullets).
+notes_are_empty() {
+    local filtered
+    filtered=$(printf '%s\n' "$1" | sed -E \
+        -e '/^[[:space:]]*$/d' \
+        -e '/^[[:space:]]*#/d' \
+        -e '/^[[:space:]]*[-*][[:space:]]*$/d')
+    [[ -z "$filtered" ]]
 }
 
 # ── Preflight checks ──────────────────────────────────────────────────────────
@@ -84,7 +100,6 @@ ok "Working tree is clean"
 # ── Read release config ───────────────────────────────────────────────────────
 log "Reading ${RELEASE_FILE}"
 
-CURRENT_VERSION=$(bun -e "console.log(require('./package.json').version)")
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
 VERSION_INPUT=$(field "version")
@@ -103,6 +118,19 @@ UPLOAD_R2="${UPLOAD_R2:-false}"
 
 ok "Config loaded"
 
+# ── Validate branch ───────────────────────────────────────────────────────────
+git show-ref --verify --quiet "refs/heads/${RELEASE_BRANCH}" \
+    || err "Branch '${RELEASE_BRANCH}' does not exist locally."
+
+# Version must come from the release branch, not the currently checked-out branch.
+CURRENT_VERSION=$(
+    git show "${RELEASE_BRANCH}:package.json" \
+        | bun -e "console.log(JSON.parse(await Bun.stdin.text()).version)"
+)
+[[ -n "$CURRENT_VERSION" ]] || err "Could not read version from ${RELEASE_BRANCH}:package.json."
+is_semver "$CURRENT_VERSION" \
+    || err "Current version '${CURRENT_VERSION}' on ${RELEASE_BRANCH} is not valid semver (x.y.z)."
+
 # ── Resolve version ───────────────────────────────────────────────────────────
 if [[ "$VERSION_INPUT" =~ ^(patch|minor|major)$ ]]; then
     NEW_VERSION=$(bump_version "$CURRENT_VERSION" "$VERSION_INPUT")
@@ -112,19 +140,26 @@ else
     err "Invalid version '${VERSION_INPUT}' in ${RELEASE_FILE}. Use patch/minor/major or x.y.z."
 fi
 
+[[ "$NEW_VERSION" == "$CURRENT_VERSION" ]] \
+    && err "Version ${NEW_VERSION} is already the current version on ${RELEASE_BRANCH}."
+
 TAG="v${NEW_VERSION}"
-git rev-parse "$TAG" &>/dev/null && err "Tag ${TAG} already exists."
+
+git rev-parse "$TAG" &>/dev/null \
+    && err "Tag ${TAG} already exists locally."
+
+if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" &>/dev/null; then
+    err "Tag ${TAG} already exists on origin."
+fi
 
 # Resolve placeholders now that we have the version
 COMMIT_MSG=$(fill "${COMMIT_MSG_RAW:-Release {tag}}")
 RELEASE_TITLE=$(fill "${RELEASE_TITLE_RAW:-{tag}}")
 
-# Treat notes that are only whitespace/template placeholders as empty
-RELEASE_NOTES_TRIMMED=$(echo "$RELEASE_NOTES" | sed '/^[[:space:]]*-[[:space:]]*$/d; /^[[:space:]]*$/d' || true)
-
-# ── Validate ──────────────────────────────────────────────────────────────────
-git show-ref --verify --quiet "refs/heads/${RELEASE_BRANCH}" \
-    || err "Branch '${RELEASE_BRANCH}' does not exist locally."
+USE_CUSTOM_NOTES=true
+if notes_are_empty "$RELEASE_NOTES"; then
+    USE_CUSTOM_NOTES=false
+fi
 
 # ── Summary + confirm ─────────────────────────────────────────────────────────
 echo ""
@@ -135,7 +170,7 @@ echo -e "  Tag         ${BOLD}${TAG}${NC}"
 echo -e "  Branch      ${DIM}${RELEASE_BRANCH}${NC}"
 echo -e "  Commit      ${DIM}${COMMIT_MSG}${NC}"
 echo -e "  Title       ${DIM}${RELEASE_TITLE}${NC}"
-if [[ -n "$RELEASE_NOTES_TRIMMED" ]]; then
+if [[ "$USE_CUSTOM_NOTES" == "true" ]]; then
     echo -e "  Notes       ${DIM}(custom — see ${RELEASE_FILE})${NC}"
 else
     echo -e "  Notes       ${DIM}(auto-generated from commits)${NC}"
@@ -146,11 +181,34 @@ echo ""
 read -rp "  Proceed? [y/N] " CONFIRM
 [[ "$CONFIRM" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 0; }
 
-# ── Switch branch if needed ───────────────────────────────────────────────────
+# ── Switch branch + sync ──────────────────────────────────────────────────────
 if [[ "$CURRENT_BRANCH" != "$RELEASE_BRANCH" ]]; then
     log "Switching to ${RELEASE_BRANCH}"
     git checkout "$RELEASE_BRANCH"
     ok "Checked out ${RELEASE_BRANCH}"
+fi
+
+log "Syncing ${RELEASE_BRANCH}"
+git pull --ff-only origin "$RELEASE_BRANCH"
+ok "Up to date with origin/${RELEASE_BRANCH}"
+
+# Re-read version after pull in case remote moved
+CURRENT_VERSION=$(bun -e "console.log(require('./package.json').version)")
+if [[ "$VERSION_INPUT" =~ ^(patch|minor|major)$ ]]; then
+    NEW_VERSION=$(bump_version "$CURRENT_VERSION" "$VERSION_INPUT")
+    TAG="v${NEW_VERSION}"
+    COMMIT_MSG=$(fill "${COMMIT_MSG_RAW:-Release {tag}}")
+    RELEASE_TITLE=$(fill "${RELEASE_TITLE_RAW:-{tag}}")
+fi
+
+[[ "$NEW_VERSION" == "$CURRENT_VERSION" ]] \
+    && err "Version ${NEW_VERSION} is already the current version after pull."
+
+git rev-parse "$TAG" &>/dev/null \
+    && err "Tag ${TAG} already exists locally after pull."
+
+if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" &>/dev/null; then
+    err "Tag ${TAG} already exists on origin."
 fi
 
 # ── Bump package.json ─────────────────────────────────────────────────────────
@@ -177,6 +235,7 @@ ok "dist/turboci.js  (node bundle)"
 # ── Commit + tag + push ───────────────────────────────────────────────────────
 log "Committing release"
 git add package.json schema/turboci.schema.json
+git diff --cached --quiet && err "Nothing to commit after version bump (package.json unchanged?)."
 git commit -m "$COMMIT_MSG"
 ok "Committed"
 
@@ -198,9 +257,9 @@ GH_ARGS=(
     --title "$RELEASE_TITLE"
 )
 
-if [[ -n "$RELEASE_NOTES_TRIMMED" ]]; then
+if [[ "$USE_CUSTOM_NOTES" == "true" ]]; then
     NOTES_FILE=$(mktemp)
-    echo "$RELEASE_NOTES" > "$NOTES_FILE"
+    printf '%s\n' "$RELEASE_NOTES" > "$NOTES_FILE"
     GH_ARGS+=(--notes-file "$NOTES_FILE")
 else
     GH_ARGS+=(--generate-notes)
@@ -210,8 +269,6 @@ fi
 
 gh release create "${GH_ARGS[@]}"
 ok "https://github.com/Moduletrace/turboci/releases/tag/${TAG}"
-
-[[ -n "${NOTES_FILE:-}" ]] && rm -f "$NOTES_FILE"
 
 # ── Optional R2 upload ────────────────────────────────────────────────────────
 if [[ "$UPLOAD_R2" == "true" ]]; then

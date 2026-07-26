@@ -1,4 +1,7 @@
 import AppData from "@/data/app-data";
+import grabProcessDetachSH, {
+    grabProcessName,
+} from "@/functions/server/shell/grab-process-detach-sh";
 import type { DefaultDeploymentParams, ServiceScriptObject } from "@/types";
 import { AppNames } from "@/utils/app-names";
 import bunGrabPrivateIPsBulkScripts from "@/utils/bun-scripts/bun-grab-private-ips-bulk-scripts";
@@ -39,45 +42,51 @@ export default async function ({
                 break;
 
             default:
-                const defaultCmds =
+                const runStage =
                     paradigm == "preflight"
-                        ? service.run?.preflight?.cmds
+                        ? service.run?.preflight
                         : paradigm == "postflight"
-                          ? service.run?.postflight?.cmds
+                          ? service.run?.postflight
                           : paradigm == "start"
-                            ? service.run?.start?.cmds
+                            ? service.run?.start
                             : undefined;
+
+                const defaultCmds = runStage?.cmds;
 
                 if (defaultCmds) {
                     for (let i = 0; i < defaultCmds.length; i++) {
                         const cmd = defaultCmds[i];
-                        sh += `${cmd}\n`;
+                        if (!cmd) continue;
 
-                        // if (
-                        //     paradigm == "start" &&
-                        //     defaultCmds.length - 1 == i
-                        // ) {
-                        //     sh += `${cmd} &\n`;
-                        //     sh += `sleep 5\n`;
-                        // } else {
-                        //     sh += `${cmd}\n`;
-                        // }
+                        if (paradigm == "start") {
+                            const procName = grabProcessName({
+                                deployment_name: deployment.deployment_name,
+                                service_name: service.service_name,
+                                index: i,
+                            });
+                            sh += grabProcessDetachSH({
+                                cmd,
+                                name: procName,
+                            });
+                        } else {
+                            sh += `${cmd}\n`;
+                        }
                     }
                 }
 
-                const new_work_dir =
+                work_dir = runStage?.work_dir ?? work_dir;
+
+                const stageFile =
                     paradigm == "preflight"
-                        ? service.run?.preflight?.work_dir
+                        ? service.run?.preflight?.file
                         : paradigm == "postflight"
-                          ? service.run?.postflight?.work_dir
+                          ? service.run?.postflight?.file
                           : paradigm == "start"
-                            ? service.run?.start?.work_dir
-                            : work_dir;
+                            ? service.run?.start?.file
+                            : undefined;
 
-                work_dir = new_work_dir;
-
-                const target_file = service.run?.preflight?.file
-                    ? path.resolve(process.cwd(), service.run?.preflight?.file)
+                const target_file = stageFile
+                    ? path.resolve(process.cwd(), stageFile)
                     : undefined;
 
                 if (
@@ -90,7 +99,19 @@ export default async function ({
                         "utf-8",
                     ).replace(/!#\/bin\/.*/, "");
 
-                    sh += `\n${targetFileSHText}\n`;
+                    if (paradigm == "start") {
+                        const procName = grabProcessName({
+                            deployment_name: deployment.deployment_name,
+                            service_name: service.service_name,
+                            index: 0,
+                        });
+                        sh += grabProcessDetachSH({
+                            cmd: targetFileSHText,
+                            name: procName,
+                        });
+                    } else {
+                        sh += `\n${targetFileSHText}\n`;
+                    }
                     break;
                 }
 
@@ -111,7 +132,19 @@ export default async function ({
                         "",
                     );
 
-                    sh += `\n${shText}\n`;
+                    if (paradigm == "start") {
+                        const procName = grabProcessName({
+                            deployment_name: deployment.deployment_name,
+                            service_name: service.service_name,
+                            index: 0,
+                        });
+                        sh += grabProcessDetachSH({
+                            cmd: shText,
+                            name: procName,
+                        });
+                    } else {
+                        sh += `\n${shText}\n`;
+                    }
                 }
 
                 break;
