@@ -201,7 +201,7 @@
                                                 "type": "string"
                                             },
                                             "use_gitignore": {
-                                                "description": "If `true`, applies the project's `.gitignore` as rsync exclude rules.",
+                                                "description": "If `true`, applies the target source direcroy's `.gitignore` as rsync exclude rules.",
                                                 "title": "use_gitignore",
                                                 "type": "boolean"
                                             }
@@ -1785,7 +1785,7 @@
                                                         "type": "string"
                                                     },
                                                     "use_gitignore": {
-                                                        "description": "If `true`, applies the project's `.gitignore` as rsync exclude rules.",
+                                                        "description": "If `true`, applies the target source direcroy's `.gitignore` as rsync exclude rules.",
                                                         "title": "use_gitignore",
                                                         "type": "boolean"
                                                     }

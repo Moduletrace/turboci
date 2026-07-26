@@ -5,7 +5,7 @@
 
 # Semver bump type or an explicit version number.
 # Options: patch | minor | major | x.y.z
-version: patch
+version: minor
 
 # Branch to create the release commit on and push to.
 branch: main
@@ -23,11 +23,16 @@ title: "{tag}"
 notes: |
     ## What's new
 
-    -
+    - Detached `run.start` processes via `setsid`/`nohup` with PID + log files (no PM2 required); prior instances are stopped before restart for idempotent deploys
+    - Per-stage `work_dir` / `file` handling for preflight, start, and postflight
+    - Relay server init retries on transient failures
+    - Next.js and Astro example deployments
 
     ## Bug fixes
 
-    -
+    - Fix relay → private server rsync failing with `No Sync IPs` / `ENOBUFS` (maxBuffer overflow from verbose rsync output)
+    - Quieter bulk sync (`rsync -az`), larger exec buffers, and clearer SSH/rsync error logs
+    - Install `rsync` on the relay server during init
 
 # Mark this as a pre-release on GitHub (e.g. for betas / release candidates).
 pre_release: false
