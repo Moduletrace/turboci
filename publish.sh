@@ -152,9 +152,10 @@ if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" &>/dev/null; then
     err "Tag ${TAG} already exists on origin."
 fi
 
-# Resolve placeholders now that we have the version
-COMMIT_MSG=$(fill "${COMMIT_MSG_RAW:-Release {tag}}")
-RELEASE_TITLE=$(fill "${RELEASE_TITLE_RAW:-{tag}}")
+# Resolve placeholders now that we have the version.
+# Defaults must be quoted: unquoted {tag} makes bash end ${var:-...} at the first }.
+COMMIT_MSG=$(fill "${COMMIT_MSG_RAW:-"Release {tag}"}")
+RELEASE_TITLE=$(fill "${RELEASE_TITLE_RAW:-"{tag}"}")
 
 USE_CUSTOM_NOTES=true
 if notes_are_empty "$RELEASE_NOTES"; then
@@ -197,8 +198,8 @@ CURRENT_VERSION=$(bun -e "console.log(require('./package.json').version)")
 if [[ "$VERSION_INPUT" =~ ^(patch|minor|major)$ ]]; then
     NEW_VERSION=$(bump_version "$CURRENT_VERSION" "$VERSION_INPUT")
     TAG="v${NEW_VERSION}"
-    COMMIT_MSG=$(fill "${COMMIT_MSG_RAW:-Release {tag}}")
-    RELEASE_TITLE=$(fill "${RELEASE_TITLE_RAW:-{tag}}")
+    COMMIT_MSG=$(fill "${COMMIT_MSG_RAW:-"Release {tag}"}")
+    RELEASE_TITLE=$(fill "${RELEASE_TITLE_RAW:-"{tag}"}")
 fi
 
 [[ "$NEW_VERSION" == "$CURRENT_VERSION" ]] \
